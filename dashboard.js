@@ -88,12 +88,18 @@ async function renderSalesSection(sales) {
   const lastYear  = thisMonth === 1 ? thisYear - 1 : thisYear;
   const lastMonth = thisMonth === 1 ? 12 : thisMonth - 1;
 
-  const thisMo = extractSalesMonth(sales, thisYear, thisMonth);
   const lastMo = extractSalesMonth(sales, lastYear, lastMonth);
+  const lastSales = getSalesAmount(lastMo);
 
-  const currentSales = getSalesAmount(thisMo);
-  const lastSales    = getSalesAmount(lastMo);
-  const purchases    = getSalesCount(thisMo);
+  // 今月分は生データ(purchases)から集計（summaryはサーバー集計に遅延があるため）
+  const rawPurchases = sales?.purchases ?? [];
+  const thisMonthBuys = rawPurchases.filter(p => {
+    if (p.is_refund) return false;
+    const d = new Date(p.purchased_at ?? p.created_at ?? "");
+    return !isNaN(d) && d.getFullYear() === thisYear && d.getMonth() + 1 === thisMonth;
+  });
+  const currentSales = thisMonthBuys.reduce((s, p) => s + (p.price ?? 0), 0);
+  const purchases    = thisMonthBuys.length;
 
   // 月次目標
   const r = await chrome.storage.local.get("monthlyGoal");
