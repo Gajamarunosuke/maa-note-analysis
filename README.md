@@ -1,4 +1,4 @@
-# Maa Note Analysis Ver.0
+# Maa Note Analysis Ver.1
 
 **note.com クリエイター向け 売上・コンテンツ分析ダッシュボード（Chrome拡張機能）**
 
