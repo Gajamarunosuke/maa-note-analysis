@@ -215,12 +215,7 @@ async function refreshStats() {
     const cache = { articles, creator, sales, updatedAt: Date.now(), hasViews };
     await chrome.storage.local.set({ [CACHE_KEY]: cache });
 
-    // バッジ表示（累計いいね数）
-    const badge = totalLikes >= 1000
-      ? `${(totalLikes / 1000).toFixed(1)}k`
-      : String(totalLikes);
-    chrome.action.setBadgeText({ text: badge });
-    chrome.action.setBadgeBackgroundColor({ color: "#6366f1" });
+    chrome.action.setBadgeText({ text: "" });
 
     console.log(`[note-dash] 完了: ${articles.length}件, ❤${totalLikes}`);
   } catch (e) {

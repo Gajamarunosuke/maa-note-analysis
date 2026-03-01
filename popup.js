@@ -200,10 +200,19 @@ function triggerRefresh() {
 
 document.getElementById("refreshBtn").addEventListener("click", async () => {
   document.getElementById("main").style.display    = "none";
+  document.getElementById("errorBox").style.display = "none";
   document.getElementById("loading").style.display = "block";
   document.getElementById("loading").textContent   = "更新中...";
   const data = await triggerRefresh();
-  if (data) renderData(data);
+  if (data) {
+    renderData(data);
+  } else {
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("errorBox").style.display = "block";
+    document.getElementById("errorBox").textContent =
+      "取得失敗。note.com にログインして再試行してください。";
+    if (cachedData) renderData(cachedData);
+  }
 });
 
 document.getElementById("openDash").addEventListener("click", () => {
