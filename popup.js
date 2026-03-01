@@ -181,20 +181,34 @@ function triggerRefresh() {
 }
 
 (async () => {
-  const data = await loadCache();
-  if (data) {
-    renderData(data);
-    return;
-  }
-  document.getElementById("loading").textContent = "データ取得中... (初回は1〜2分かかります)";
-  const data2 = await triggerRefresh();
-  if (data2) {
-    renderData(data2);
-  } else {
+  if (typeof chrome === "undefined" || !chrome.storage) {
     document.getElementById("loading").style.display = "none";
     document.getElementById("errorBox").style.display = "block";
     document.getElementById("errorBox").textContent =
-      "取得失敗。note.com にログインして「↻ 更新」を押してください。";
+      "Chrome拡張機能としてインストールして開いてください。";
+    return;
+  }
+  try {
+    const data = await loadCache();
+    if (data) {
+      renderData(data);
+      return;
+    }
+    document.getElementById("loading").textContent = "データ取得中... (初回は1〜2分かかります)";
+    const data2 = await triggerRefresh();
+    if (data2) {
+      renderData(data2);
+    } else {
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("errorBox").style.display = "block";
+      document.getElementById("errorBox").textContent =
+        "取得失敗。note.com にログインして「↻ 更新」を押してください。";
+    }
+  } catch (e) {
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("errorBox").style.display = "block";
+    document.getElementById("errorBox").textContent =
+      "エラーが発生しました。chrome://extensions で拡張機能を再読み込みしてください。";
   }
 })();
 
