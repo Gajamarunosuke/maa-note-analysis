@@ -199,19 +199,20 @@ function triggerRefresh() {
 })();
 
 document.getElementById("refreshBtn").addEventListener("click", async () => {
-  document.getElementById("main").style.display    = "none";
+  const btn = document.getElementById("refreshBtn");
+  btn.textContent = "↻ 更新中...";
+  btn.disabled = true;
   document.getElementById("errorBox").style.display = "none";
-  document.getElementById("loading").style.display = "block";
-  document.getElementById("loading").textContent   = "更新中...";
   const data = await triggerRefresh();
+  btn.textContent = "↻ 更新";
+  btn.disabled = false;
   if (data) {
     renderData(data);
-  } else {
+  } else if (!cachedData) {
     document.getElementById("loading").style.display = "none";
     document.getElementById("errorBox").style.display = "block";
     document.getElementById("errorBox").textContent =
       "取得失敗。note.com にログインして再試行してください。";
-    if (cachedData) renderData(cachedData);
   }
 });
 
