@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Maa Note Analysis</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#f0f4f8;width:320px;color:#1e293b}
+
+/* Header */
+header{background:#fff;padding:10px 14px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center}
+.hd-left{display:flex;align-items:center;gap:8px}
+.note-logo{width:26px;height:26px;flex-shrink:0}
+.title{font-size:0.9rem;font-weight:700;color:#0f172a}
+.updated{font-size:0.63rem;color:#94a3b8;text-align:right;line-height:1.4}
+
+/* Sales Hero */
+.sales-hero{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 55%,#4338ca 100%);padding:16px 16px 14px;color:#fff}
+.sales-row{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.sales-item{padding:0}
+.sales-item:first-child{border-right:1px solid rgba(255,255,255,.2);padding-right:12px}
+.sales-item:last-child{padding-left:12px}
+.sales-label{font-size:0.63rem;color:#c7d2fe;margin-bottom:4px;font-weight:500}
+.sales-value{font-size:1.75rem;font-weight:800;color:#fff;line-height:1;letter-spacing:-.03em}
+.sales-sub{font-size:0.6rem;color:#a5b4fc;margin-top:4px}
+.sales-no-data{font-size:0.72rem;color:#c7d2fe;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.15)}
+
+/* 4 KPI row */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-bottom:1px solid #f1f5f9}
+.kpi-cell{padding:9px 4px;text-align:center;border-right:1px solid #f1f5f9}
+.kpi-cell:last-child{border:none}
+.kpi-label{font-size:0.58rem;color:#94a3b8;margin-bottom:3px;line-height:1.2}
+.kpi-value{font-size:0.95rem;font-weight:700;color:#0f172a;line-height:1}
+
+/* Login banner */
+#loginBanner{background:#eff6ff;border-top:1px solid #bfdbfe;border-bottom:1px solid #bfdbfe;padding:7px 12px;font-size:0.68rem;color:#1e40af;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+/* Mini bar chart */
+.mini-chart{padding:10px 12px 8px;background:#fff;margin-top:8px}
+.mini-chart-title{font-size:0.68rem;color:#64748b;margin-bottom:6px;font-weight:600}
+canvas{border-radius:4px;display:block}
+
+/* Actions */
+.actions{display:flex;gap:8px;padding:10px 12px 12px;background:#fff}
+.btn{flex:1;padding:8px;border-radius:8px;border:none;font-size:0.75rem;cursor:pointer;font-weight:600;transition:opacity .2s}
+.btn:hover{opacity:.85}
+.btn-primary{background:#3b82f6;color:#fff}
+.btn-ghost{background:#f8fafc;color:#64748b;border:1px solid #e2e8f0}
+
+/* States */
+.loading{text-align:center;padding:36px;color:#94a3b8;font-size:0.82rem}
+.error-box{background:#fee2e2;color:#b91c1c;font-size:0.78rem;padding:10px 12px;margin:8px 12px;border-radius:8px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-left">
+    <!-- note.com ロゴ（簡易SVG） -->
+    <svg class="note-logo" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="40" height="40" rx="9" fill="#41C9B4"/>
+      <path d="M11 27V15h4.2l7.6 8.4V15H27v12h-4.2L15.2 18.6V27H11z" fill="#fff"/>
+    </svg>
+    <div class="title">Maa Note Analysis <span style="font-size:0.6rem;color:#94a3b8;font-weight:400">Ver.0</span></div>
+  </div>
+  <div class="updated" id="updatedAt">—</div>
+</header>
+
+<div id="loading" class="loading">データを読み込み中...</div>
+<div id="errorBox" class="error-box" style="display:none"></div>
+
+<div id="main" style="display:none">
+
+  <!-- 今月売上 + 購入件数（大きく） -->
+  <div class="sales-hero">
+    <div class="sales-row">
+      <div class="sales-item">
+        <div class="sales-label">今月の売上</div>
+        <div class="sales-value" id="sSales">—</div>
+        <div class="sales-sub" id="sSalesSub"></div>
+      </div>
+      <div class="sales-item">
+        <div class="sales-label">今月の購入件数</div>
+        <div class="sales-value" id="sPurchases">—</div>
+        <div class="sales-sub" id="sPurchasesSub"></div>
+      </div>
+    </div>
+    <div id="salesNoData" class="sales-no-data" style="display:none">
+      💡 売上を取得するには note.com へのログインが必要です
+    </div>
+  </div>
+
+  <!-- フォロワー / 閲覧 / いいね / ENG率 -->
+  <div class="kpi-row">
+    <div class="kpi-cell">
+      <div class="kpi-label">フォロワー</div>
+      <div class="kpi-value" id="kFollowers">—</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-label">閲覧数</div>
+      <div class="kpi-value" id="kViews">—</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-label">いいね</div>
+      <div class="kpi-value" id="kLikes">—</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-label">ENG率</div>
+      <div class="kpi-value" id="kEng">—</div>
+    </div>
+  </div>
+
+  <!-- ログイン誘導（閲覧数未取得時） -->
+  <div id="loginBanner" style="display:none">
+    <span>👁️ 閲覧数には note.com ログインが必要</span>
+    <button id="loginBtn" style="padding:3px 10px;background:#3b82f6;color:#fff;border:none;border-radius:5px;font-size:0.68rem;cursor:pointer;font-weight:600">ログイン →</button>
+  </div>
+
+  <!-- 月別売上ミニグラフ（直近3ヶ月） -->
+  <div class="mini-chart">
+    <div class="mini-chart-title">📈 月別売上（直近3ヶ月）</div>
+    <canvas id="miniChart" height="72"></canvas>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" id="openDash">📊 ダッシュボード</button>
+    <button class="btn btn-ghost"   id="refreshBtn">↻ 更新</button>
+  </div>
+
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

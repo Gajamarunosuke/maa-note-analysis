@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Maa Note Analysis - 設定</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#f0f4f8;color:#1e293b;padding:32px}
+.card{background:#fff;border-radius:14px;padding:28px;max-width:520px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:16px}
+h1{font-size:1.1rem;font-weight:700;color:#0f172a;margin-bottom:4px}
+.sub{font-size:0.78rem;color:#94a3b8;margin-bottom:20px}
+.section-title{font-size:0.7rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #ede9fe}
+label{display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:6px;margin-top:14px}
+label:first-of-type{margin-top:0}
+input[type=text],input[type=number],input[type=password]{width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-size:0.88rem;outline:none;transition:border-color .2s}
+input:focus{border-color:#6366f1}
+.hint{font-size:0.72rem;color:#94a3b8;margin-top:5px}
+.hint a{color:#3b82f6}
+.btn-row{display:flex;gap:10px;margin-top:20px}
+.btn{padding:9px 20px;border-radius:8px;border:none;font-size:0.82rem;cursor:pointer;font-weight:600;transition:opacity .2s}
+.btn:hover{opacity:.85}
+.btn-primary{background:#6366f1;color:#fff}
+.btn-ghost{background:#f1f5f9;color:#64748b}
+.status{margin-top:12px;font-size:0.78rem;padding:8px 12px;border-radius:8px;display:none}
+.status.ok{background:#dcfce7;color:#16a34a}
+.status.err{background:#fee2e2;color:#b91c1c}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.62rem;font-weight:700;background:#ede9fe;color:#6d28d9;margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+
+<!-- クリエイター設定 -->
+<div class="card">
+  <h1>Maa Note Analysis — 設定</h1>
+  <p class="sub">note クリエイターの ID と売上目標を設定します</p>
+
+  <div class="section-title">note クリエイター設定</div>
+
+  <label for="creatorId">クリエイター ID</label>
+  <input id="creatorId" type="text" placeholder="例: brainy_quince872">
+  <div class="hint">note.com のプロフィール URL <code>https://note.com/<strong>ここ</strong></code> の部分</div>
+
+  <label for="monthlyGoal">月次売上目標 <span class="badge">売上KPI</span></label>
+  <input id="monthlyGoal" type="number" placeholder="例: 30000" min="0" step="1000">
+  <div class="hint">円単位で入力。ダッシュボードの目標達成率バーに反映されます</div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="saveBtn">保存してデータ取得</button>
+    <button class="btn btn-ghost"   id="clearBtn">クリア</button>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<!-- Gemini AI設定 -->
+<div class="card">
+  <div class="section-title">Gemini AI コメント設定 <span class="badge">AI分析</span></div>
+  <p style="font-size:0.78rem;color:#64748b;margin-bottom:16px">
+    ダッシュボードの「AIコメント」機能（鬼軍曹 / アドバイザー / ほめて育てる）で使用します
+  </p>
+
+  <label for="geminiApiKey">Gemini API キー</label>
+  <input id="geminiApiKey" type="password" placeholder="AIza...">
+  <div class="hint">
+    <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> で無料取得できます（Gemini 1.5 Flash 使用・無料枠あり）
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="saveApiBtn">APIキーを保存</button>
+    <button class="btn btn-ghost"   id="clearApiBtn">削除</button>
+  </div>
+  <div class="status" id="apiStatus"></div>
+</div>
+
+<script src="options.js"></script>
+</body>
+</html>

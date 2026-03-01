@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Maa Note Analysis",
+  "version": "1.0",
+  "description": "note.com の投稿統計を分析・可視化するダッシュボード。誰でも使えます。",
+
+  "permissions": ["storage", "alarms", "tabs"],
+  "host_permissions": [
+    "https://note.com/*",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Maa Note Analysis"
+  },
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "options_page": "options.html"
+}

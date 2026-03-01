@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Maa Note Analysis – DEMO</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#f7f7f9;color:#1e293b;min-width:960px;max-width:1400px;margin:0 auto}
+
+/* ── Demo banner ─────────────────────────────────────────── */
+.demo-banner{background:linear-gradient(90deg,#f59e0b,#f97316);color:#fff;text-align:center;padding:8px;font-size:0.82rem;font-weight:700;letter-spacing:.05em;position:sticky;top:0;z-index:200}
+
+/* ── Header ─────────────────────────────────────────────── */
+.header{background:#fff;padding:0 28px;border-bottom:1px solid #e8e8ed;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:33px;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.logo{font-size:1.05rem;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:9px}
+.logo .accent{color:#6366f1}
+.header-right{display:flex;align-items:center;gap:12px}
+#updatedAt{font-size:0.72rem;color:#9ca3af}
+.btn-refresh{padding:7px 18px;background:#94a3b8;color:#fff;border:none;border-radius:8px;font-size:0.78rem;cursor:default;font-weight:600;letter-spacing:.02em}
+.btn-csv{padding:7px 14px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:0.78rem;cursor:pointer;font-weight:500;transition:all .2s}
+.btn-csv:hover{border-color:#6366f1;color:#6366f1}
+
+/* ── Tab Navigation ──────────────────────────────────────── */
+.tab-nav{background:#fff;border-bottom:2px solid #e5e7eb;padding:0 28px;position:sticky;top:89px;z-index:90;box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex}
+.tab-btn{padding:13px 22px;border:none;background:none;font-size:0.83rem;cursor:pointer;color:#6b7280;font-weight:600;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;letter-spacing:.01em}
+.tab-btn:hover{color:#4f46e5}
+.tab-btn.active{color:#4f46e5;border-bottom-color:#4f46e5}
+.tab-pane{display:none;padding:24px 28px 48px}
+.tab-pane.active{display:block}
+
+/* ── Sales Hero ──────────────────────────────────────────── */
+.sales-hero{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4338ca 100%);border-radius:16px;padding:28px;margin-bottom:20px;color:#fff;position:relative;overflow:hidden}
+.sales-hero::before{content:"";position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:rgba(255,255,255,.04);border-radius:50%;pointer-events:none}
+.sales-hero-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.sales-hero-label{font-size:1rem;font-weight:700;letter-spacing:.04em;color:#e0e7ff}
+.sales-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:22px}
+.sales-kpi{text-align:left}
+.sales-kpi-label{font-size:0.78rem;color:#c7d2fe;margin-bottom:6px;font-weight:500}
+.sales-kpi-value{font-size:2rem;font-weight:700;color:#fff;letter-spacing:-.04em;line-height:1}
+.sales-kpi-value.large{font-size:2.6rem}
+.sales-kpi-sub{font-size:0.72rem;margin-top:5px}
+.sales-kpi-sub.up{color:#34d399}
+.sales-kpi-sub.down{color:#f87171}
+.sales-kpi-sub.neutral{color:#a5b4fc}
+.goal-label{display:flex;justify-content:space-between;font-size:0.72rem;color:#c7d2fe;margin-bottom:8px}
+.goal-bar-wrap{height:8px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden}
+.goal-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#34d399,#10b981);transition:width 1s ease;min-width:2px}
+.goal-bar-fill.over{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+
+/* ── Funnel ──────────────────────────────────────────────── */
+.funnel-card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #f0f0f4;margin-bottom:20px}
+.funnel-title{font-size:0.82rem;font-weight:700;color:#1f2937;margin-bottom:16px}
+.funnel-row{display:flex;align-items:center;gap:0}
+.funnel-step{flex:1;text-align:center;position:relative}
+.funnel-step-num{font-size:1.6rem;font-weight:700;color:#1f2937;line-height:1}
+.funnel-step-label{font-size:0.65rem;color:#9ca3af;margin-top:4px}
+.funnel-step-sub{font-size:0.6rem;color:#d1d5db;margin-top:2px}
+.funnel-arrow{color:#d1d5db;font-size:1.2rem;flex-shrink:0;padding:0 8px}
+.funnel-rate{flex-shrink:0;text-align:center;padding:0 8px}
+.funnel-rate-val{font-size:1.1rem;font-weight:700;color:#6366f1}
+.funnel-rate-label{font-size:0.6rem;color:#9ca3af}
+
+/* ── KPI Grid ────────────────────────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.kpi-card{background:#fff;border-radius:16px;padding:18px 16px 18px 18px;box-shadow:0 1px 4px rgba(0,0,0,.05);border:1px solid #f1f1f5;display:flex;align-items:center;gap:14px}
+.kpi-icon{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0}
+.kpi-icon.c-blue  {background:#eff6ff}
+.kpi-icon.c-indigo{background:#eef2ff}
+.kpi-icon.c-sky   {background:#f0f9ff}
+.kpi-grid-3{grid-template-columns:repeat(3,1fr)}
+.kpi-label{font-size:0.67rem;color:#9ca3af;margin-bottom:4px;font-weight:500}
+.kpi-value{font-size:1.7rem;font-weight:800;color:#111827;line-height:1;letter-spacing:-.03em}
+.kpi-sub{font-size:0.63rem;color:#c4c9d4;margin-top:4px}
+
+/* ── Paid Articles Table ─────────────────────────────────── */
+.paid-section{margin-bottom:22px}
+.section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.section-title{font-size:0.9rem;font-weight:700;color:#111827}
+.table-card{background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #f0f0f4;overflow:hidden}
+.tbl{width:100%;border-collapse:collapse;font-size:0.78rem}
+.tbl th{background:#f9fafb;padding:10px 14px;text-align:left;font-size:0.7rem;font-weight:600;color:#6b7280;border-bottom:1px solid #f3f4f6;white-space:nowrap}
+.tbl td{padding:10px 14px;border-bottom:1px solid #f9fafb;vertical-align:middle}
+.tbl tr:last-child td{border:none}
+.tbl tr:hover td{background:#fafaff}
+.art-link{color:#2563eb;text-decoration:none;font-weight:500}
+.art-link:hover{text-decoration:underline}
+.col-r{text-align:right}
+.col-sm{white-space:nowrap}
+.badge{display:inline-block;padding:3px 8px;border-radius:8px;font-size:0.65rem;font-weight:600}
+.b-paid{background:#fef9c3;color:#854d0e}
+.b-free{background:#f0fdf4;color:#166534}
+.purchase-bar{display:inline-block;height:6px;border-radius:3px;background:linear-gradient(90deg,#6366f1,#8b5cf6);min-width:2px;margin-right:6px;vertical-align:middle}
+.paid-sort-group{display:flex;gap:0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden}
+.paid-sort-btn{padding:5px 14px;border:none;background:#fff;font-size:0.73rem;cursor:pointer;color:#6b7280;font-weight:500;transition:all .15s}
+.paid-sort-btn:not(:last-child){border-right:1px solid #e5e7eb}
+.paid-sort-btn.active{background:#6366f1;color:#fff}
+
+/* ── Sales Charts ────────────────────────────────────────── */
+.sgran-group{display:flex;gap:0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden}
+.sgran-btn{padding:5px 14px;border:none;background:#fff;font-size:0.73rem;cursor:pointer;color:#6b7280;font-weight:500;transition:all .15s}
+.sgran-btn:not(:last-child){border-right:1px solid #e5e7eb}
+.sgran-btn.active{background:#6366f1;color:#fff}
+
+/* ── Bubble Charts ───────────────────────────────────────── */
+.bubble-card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #f0f0f4;margin-bottom:22px;min-width:0;overflow:hidden}
+.bubble-title{font-size:0.88rem;font-weight:700;color:#1f2937;margin-bottom:4px}
+.bubble-sub{font-size:0.72rem;color:#9ca3af;margin-bottom:14px}
+.bubble-wrap{position:relative}
+
+/* ── Gemini AI Section ───────────────────────────────────── */
+.ai-section{background:#fff;border-radius:14px;padding:22px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #f0f0f4;margin-bottom:22px}
+.ai-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.ai-title{font-size:0.88rem;font-weight:700;color:#1f2937}
+.ai-output{min-height:80px;background:#f8f7ff;border-radius:10px;padding:16px;font-size:0.82rem;line-height:1.7;color:#374151;border:1px solid #ede9fe}
+
+/* ── Period Selector ──────────────────────────────────────── */
+.period-bar{display:flex;justify-content:flex-end;margin-bottom:18px;gap:0}
+.period-btn{padding:7px 18px;border:1px solid #e5e7eb;background:#fff;font-size:0.78rem;cursor:pointer;color:#6b7280;transition:all .15s;font-weight:500}
+.period-btn:first-child{border-radius:8px 0 0 8px}
+.period-btn:last-child{border-radius:0 8px 8px 0}
+.period-btn:not(:first-child){border-left:0}
+.period-btn.active{background:#6366f1;color:#fff;border-color:#6366f1;z-index:1}
+
+/* ── Charts ──────────────────────────────────────────────── */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.chart-card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #f0f0f4;min-width:0;overflow:hidden}
+.chart-title{font-size:0.88rem;font-weight:700;color:#1f2937;margin-bottom:16px}
+.chart-wrap{height:200px;position:relative}
+
+/* ── TOP 10 ──────────────────────────────────────────────── */
+.top-list{background:#fff;border-radius:14px;padding:14px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #f0f0f4;margin-bottom:22px}
+.top-item{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #f3f4f6}
+.top-item:last-child{border:none}
+.top-rank{font-size:0.9rem;width:26px;text-align:center;flex-shrink:0;font-weight:700;color:#6b7280}
+.top-info{flex:1;min-width:0}
+.top-title-link{color:#1d4ed8;text-decoration:none;font-size:0.82rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-title-link:hover{text-decoration:underline}
+.top-meta{font-size:0.67rem;color:#9ca3af;margin-top:2px}
+.top-nums{display:flex;gap:10px;white-space:nowrap;font-size:0.75rem}
+.n-view{color:#3b82f6}
+.n-like{color:#ec4899;font-weight:600}
+.n-cmt{color:#10b981}
+
+/* ── Filter Bar ──────────────────────────────────────────── */
+.filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.f-btn{padding:5px 13px;border-radius:20px;border:1px solid #e5e7eb;background:#fff;font-size:0.73rem;cursor:pointer;color:#6b7280;transition:all .15s;font-weight:500}
+.f-btn:hover{border-color:#6366f1;color:#6366f1}
+.f-btn.active{background:#6366f1;color:#fff;border-color:#6366f1}
+.f-btn.active.c-market{background:#3b82f6;border-color:#3b82f6}
+.f-btn.active.c-lv    {background:#f59e0b;border-color:#f59e0b}
+.f-btn.active.c-story {background:#8b5cf6;border-color:#8b5cf6}
+.f-btn.active.c-coffee{background:#f97316;border-color:#f97316}
+.f-btn.active.c-other {background:#10b981;border-color:#10b981}
+.search-wrap{flex:1;max-width:260px;margin-left:4px}
+.search-input{width:100%;padding:6px 14px;border:1px solid #e5e7eb;border-radius:20px;font-size:0.78rem;outline:none;background:#fafafa}
+.search-input:focus{border-color:#6366f1;background:#fff}
+#tblInfo{font-size:0.7rem;color:#9ca3af;margin-left:auto}
+
+/* ── All Articles Table ──────────────────────────────────── */
+.cat-badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:0.67rem;font-weight:600;color:#fff}
+.c-market{background:#3b82f6}
+.c-lv    {background:#f59e0b}
+.c-story {background:#8b5cf6}
+.c-coffee{background:#f97316}
+.c-other {background:#10b981}
+
+/* ── Footer ──────────────────────────────────────────── */
+.footer{text-align:center;padding:16px;font-size:0.7rem;color:#d1d5db;border-top:1px solid #f3f4f6;background:#fff}
+</style>
+</head>
+<body>
+
+<div class="demo-banner">🎯 DEMO MODE — サンプルデータで表示中（架空の数値・記事名です）</div>
+
+<header class="header">
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+      <rect width="40" height="40" rx="9" fill="#000"/>
+      <path d="M11 27V15h4.2l7.6 8.4V15H27v12h-4.2L15.2 18.6V27H11z" fill="#fff"/>
+    </svg>
+    Maa <span class="accent">Note</span> Analysis
+    <span style="font-size:0.62rem;font-weight:400;color:#9ca3af;margin-left:2px">Ver.0</span>
+  </div>
+  <div class="header-right">
+    <span id="updatedAt"></span>
+    <button class="btn-csv" id="csvBtn">⬇ CSV</button>
+    <button class="btn-refresh" title="DEMOモードのため更新不可">↻ DEMO</button>
+  </div>
+</header>
+
+<nav class="tab-nav" id="tabNav">
+  <button class="tab-btn active" data-tab="revenue">💰 収益・売上</button>
+  <button class="tab-btn"        data-tab="content">📊 コンテンツ分析</button>
+  <button class="tab-btn"        data-tab="articles">📋 記事一覧</button>
+</nav>
+
+<div id="mainContent">
+
+  <!-- TAB 1: 収益・売上 -->
+  <div class="tab-pane active" id="tab-revenue">
+
+    <div class="sales-hero">
+      <div class="sales-hero-header">
+        <div class="sales-hero-label">💰 売上ダッシュボード</div>
+      </div>
+      <div class="sales-kpi-row">
+        <div class="sales-kpi">
+          <div class="sales-kpi-label">今月の売上</div>
+          <div class="sales-kpi-value large" id="sCurrentSales">—</div>
+          <div class="sales-kpi-sub neutral" id="sCurrentSalesSub"></div>
+        </div>
+        <div class="sales-kpi">
+          <div class="sales-kpi-label">先月比</div>
+          <div class="sales-kpi-value" id="sMoM">—</div>
+          <div class="sales-kpi-sub neutral" id="sMoMSub"></div>
+        </div>
+        <div class="sales-kpi">
+          <div class="sales-kpi-label">今月の購入件数</div>
+          <div class="sales-kpi-value" id="sPurchaseCount">—</div>
+          <div class="sales-kpi-sub neutral" id="sPurchaseSub"></div>
+        </div>
+        <div class="sales-kpi">
+          <div class="sales-kpi-label">目標達成率</div>
+          <div class="sales-kpi-value" id="sGoalRate">—</div>
+          <div class="sales-kpi-sub neutral" id="sGoalSub"></div>
+        </div>
+      </div>
+      <div class="sales-kpi-row" style="grid-template-columns:repeat(2,1fr);border-top:1px solid rgba(255,255,255,.15);padding-top:16px;margin-top:4px;margin-bottom:16px">
+        <div class="sales-kpi">
+          <div class="sales-kpi-label">年間売上（累計）</div>
+          <div class="sales-kpi-value" id="sYearlySales">—</div>
+          <div class="sales-kpi-sub neutral" id="sYearlySalesSub"></div>
+        </div>
+        <div class="sales-kpi">
+          <div class="sales-kpi-label">年間購入件数（累計）</div>
+          <div class="sales-kpi-value" id="sYearlyPurchases">—</div>
+          <div class="sales-kpi-sub neutral" id="sYearlyPurchasesSub"></div>
+        </div>
+      </div>
+      <div>
+        <div class="goal-label">
+          <span id="goalLabelLeft">進捗</span>
+          <span id="goalLabelRight"></span>
+        </div>
+        <div class="goal-bar-wrap">
+          <div class="goal-bar-fill" id="goalBarFill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="funnel-card">
+      <div class="funnel-title">📊 購買ファネル（閲覧 → 有料記事 → 購入）</div>
+      <div class="funnel-row">
+        <div class="funnel-step">
+          <div class="funnel-step-num" id="fTotalViews">—</div>
+          <div class="funnel-step-label">総閲覧数</div>
+          <div class="funnel-step-sub">全記事合計</div>
+        </div>
+        <div class="funnel-arrow">→</div>
+        <div class="funnel-step">
+          <div class="funnel-step-num" id="fPaidViews">—</div>
+          <div class="funnel-step-label">有料記事閲覧数</div>
+          <div class="funnel-step-sub" id="fPaidViewsSub"></div>
+        </div>
+        <div class="funnel-rate">
+          <div class="funnel-rate-val" id="fPaidViewRate">—</div>
+          <div class="funnel-rate-label">有料閲覧率</div>
+        </div>
+        <div class="funnel-arrow">→</div>
+        <div class="funnel-step">
+          <div class="funnel-step-num" id="fPurchases">—</div>
+          <div class="funnel-step-label">購入数</div>
+          <div class="funnel-step-sub">直近3ヶ月累計</div>
+        </div>
+        <div class="funnel-rate">
+          <div class="funnel-rate-val" id="fPurchaseRate">—</div>
+          <div class="funnel-rate-label">購入率</div>
+        </div>
+        <div class="funnel-arrow">→</div>
+        <div class="funnel-step">
+          <div class="funnel-step-num" id="fAvgPrice">—</div>
+          <div class="funnel-step-label">平均単価</div>
+          <div class="funnel-step-sub" id="fAvgPriceSub"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-hd">
+      <div class="section-title">📈 売上・購入推移</div>
+      <div class="sgran-group">
+        <button class="sgran-btn active" data-gran="month">月別</button>
+        <button class="sgran-btn" data-gran="week">週別</button>
+        <button class="sgran-btn" data-gran="day">日別</button>
+      </div>
+    </div>
+    <div class="charts-grid" style="margin-bottom:22px">
+      <div class="chart-card">
+        <div class="chart-title">売上推移　棒:期間別 ／ 線:累積</div>
+        <div class="chart-wrap"><canvas id="salesChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">購入件数推移　棒:期間別 ／ 線:累積</div>
+        <div class="chart-wrap"><canvas id="purchaseChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="bubble-card">
+      <div class="bubble-title">🎯 記事パフォーマンスマップ</div>
+      <div class="bubble-sub">横軸: 閲覧数（PV）　縦軸: いいね数　バブルサイズ: 売上金額（直近3ヶ月）　中央値で4象限に分類</div>
+      <div class="bubble-wrap" style="height:320px"><canvas id="articleBubble"></canvas></div>
+    </div>
+
+    <div class="paid-section">
+      <div class="section-hd">
+        <div class="section-title">💎 有料記事パフォーマンス（上位10件）<span style="font-size:0.7rem;font-weight:400;color:#9ca3af;margin-left:8px">売上・購入数は直近3ヶ月 / 閲覧数・いいねは累計</span></div>
+        <div class="paid-sort-group">
+          <button class="paid-sort-btn" data-psort="readCount">閲覧数</button>
+          <button class="paid-sort-btn" data-psort="likeCount">いいね</button>
+          <button class="paid-sort-btn active" data-psort="sales">売上</button>
+        </div>
+      </div>
+      <div class="table-card">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>#</th><th>記事タイトル</th><th class="col-r">閲覧数</th>
+              <th class="col-r">いいね</th><th class="col-r">売上（累計）</th>
+              <th class="col-r">購入数</th><th class="col-r">購入率</th><th class="col-r">ENG率</th>
+            </tr>
+          </thead>
+          <tbody id="paidTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="ai-section">
+      <div class="ai-header">
+        <div class="ai-title">🌱 Gemini AI コメント <span style="font-size:0.7rem;font-weight:400;color:#9ca3af">（デモ出力）</span></div>
+      </div>
+      <div class="ai-output" id="aiOutput"></div>
+    </div>
+
+  </div><!-- /tab-revenue -->
+
+  <!-- TAB 2: コンテンツ分析 -->
+  <div class="tab-pane" id="tab-content">
+
+    <div class="kpi-grid kpi-grid-3" style="margin-bottom:12px">
+      <div class="kpi-card">
+        <div class="kpi-icon c-indigo">👥</div>
+        <div>
+          <div class="kpi-label">フォロワー数</div>
+          <div class="kpi-value" id="kFollowers">—</div>
+          <div class="kpi-sub" id="kFollowersSub">現在</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon c-sky">🔔</div>
+        <div>
+          <div class="kpi-label">フォロー数</div>
+          <div class="kpi-value" id="kFollowing">—</div>
+          <div class="kpi-sub" id="kFollowingSub">現在</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon c-blue">📄</div>
+        <div>
+          <div class="kpi-label">記事数</div>
+          <div class="kpi-value" id="kArticles">—</div>
+          <div class="kpi-sub" id="kArticlesSub"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-grid" style="margin-bottom:22px">
+      <div class="kpi-card">
+        <div class="kpi-icon c-blue">👁️</div>
+        <div>
+          <div class="kpi-label">総閲覧数</div>
+          <div class="kpi-value" id="kViews">—</div>
+          <div class="kpi-sub" id="kViewsSub"></div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon c-indigo">♥</div>
+        <div>
+          <div class="kpi-label">総いいね数</div>
+          <div class="kpi-value" id="kLikes">—</div>
+          <div class="kpi-sub" id="kLikesSub"></div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon c-indigo">📊</div>
+        <div>
+          <div class="kpi-label">エンゲージメント率</div>
+          <div class="kpi-value" id="kEng">—</div>
+          <div class="kpi-sub" id="kEngSub"></div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon c-sky">💬</div>
+        <div>
+          <div class="kpi-label">総コメント数</div>
+          <div class="kpi-value" id="kComments">—</div>
+          <div class="kpi-sub" id="kCommentsSub"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="period-bar">
+      <button class="period-btn active" data-gran="day">日別</button>
+      <button class="period-btn"        data-gran="week">週別</button>
+      <button class="period-btn"        data-gran="month">月別</button>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">いいね数 ・ 投稿数推移</div>
+        <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">日別 閲覧数(PV) ・ エンゲージメント率</div>
+        <div class="chart-wrap"><canvas id="engChart"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-grid" style="margin-bottom:22px">
+      <div class="chart-card">
+        <div class="chart-title">カテゴリ別 記事数</div>
+        <div class="chart-wrap"><canvas id="catChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">カテゴリ別 総いいね数</div>
+        <div class="chart-wrap"><canvas id="catLikeChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="bubble-card">
+      <div class="bubble-title">📐 カテゴリ効率マップ</div>
+      <div class="bubble-sub">横軸: 記事数　縦軸: 平均閲覧数（PV）　バブルサイズ: ENG率（いいね+コメント÷閲覧数）</div>
+      <div class="bubble-wrap" style="height:280px"><canvas id="categoryBubble"></canvas></div>
+    </div>
+
+    <div class="section-hd">
+      <div class="section-title">🏆 いいね TOP 10</div>
+    </div>
+    <div class="top-list" id="top10"></div>
+
+  </div><!-- /tab-content -->
+
+  <!-- TAB 3: 記事一覧 -->
+  <div class="tab-pane" id="tab-articles">
+
+    <div class="filter-bar">
+      <div class="section-title" style="margin:0;font-size:.85rem">全記事一覧</div>
+      <button class="f-btn active"   data-cat="all">すべて</button>
+      <button class="f-btn c-market" data-cat="市況夕刊">市況夕刊</button>
+      <button class="f-btn c-lv"     data-cat="Lvシリーズ">Lvシリーズ</button>
+      <button class="f-btn c-story"  data-cat="シリーズ物語">シリーズ物語</button>
+      <button class="f-btn c-coffee" data-cat="コーヒー">コーヒー</button>
+      <button class="f-btn c-other"  data-cat="その他">その他</button>
+      <div class="search-wrap">
+        <input type="text" id="searchInput" class="search-input" placeholder="記事名で検索...">
+      </div>
+      <span id="tblInfo"></span>
+    </div>
+
+    <div class="table-card" style="margin-bottom:28px">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th class="col-r">#</th><th>タイトル</th><th>カテゴリ</th>
+            <th>投稿日時</th><th>種別</th>
+            <th class="col-r">閲覧数</th><th class="col-r">いいね</th>
+            <th class="col-r">コメント</th><th class="col-r">エンゲージメント</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+  </div><!-- /tab-articles -->
+
+</div><!-- /mainContent -->
+
+<footer class="footer" id="footerText">Maa Note Analysis – DEMO</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.font.family = "'Noto Sans JP','Hiragino Sans',sans-serif";
+Chart.defaults.font.size = 11;
+
+// ─── 定数 ───────────────────────────────────────────────────
+const CAT_COLORS = {
+  "市況夕刊":    "#3b82f6",
+  "Lvシリーズ":  "#f59e0b",
+  "シリーズ物語": "#8b5cf6",
+  "コーヒー":    "#f97316",
+  "その他":      "#10b981",
+};
+const CAT_BG = {
+  "市況夕刊":"c-market","Lvシリーズ":"c-lv",
+  "シリーズ物語":"c-story","コーヒー":"c-coffee","その他":"c-other",
+};
+const MEDALS = ["🥇","🥈","🥉"];
+
+// ─── 状態 ───────────────────────────────────────────────────
+let currentCat      = "all";
+let chartGran       = "day";
+let paidSortKey     = "sales";
+let salesGranularity = "month";
+let allArticles     = [];
+let currentData     = null;
+const charts        = {};
+
+// ─── カテゴリ判定 ────────────────────────────────────────────
+function categorize(title) {
+  if (/杜のカエル|杜の投資家/.test(title)) return "市況夕刊";
+  if (/Lv|🐶/.test(title))                  return "Lvシリーズ";
+  if (/🐼|🐭|🐨|🐈|🐘/.test(title))        return "シリーズ物語";
+  if (/☕|コーヒー/.test(title))             return "コーヒー";
+  return "その他";
+}
+
+// ─── フォーマット ────────────────────────────────────────────
+function fmt(n) {
+  if (n == null || n < 0) return "—";
+  return n >= 10000 ? `${(n / 10000).toFixed(1)}万` : n.toLocaleString();
+}
+function fmtYen(n) {
+  if (n == null || n < 0) return "—";
+  return `¥${n.toLocaleString()}`;
+}
+function fmtDate(s) {
+  if (!s) return "";
+  const d = new Date(s);
+  return isNaN(d) ? s
+    : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+}
+function pct(n) { return n == null || n < 0 ? "—" : n.toFixed(2) + "%"; }
+
+// ─── デモデータ ──────────────────────────────────────────────
+const DEMO_DATA = (function() {
+  const articles = [
+    // 市況夕刊 (8記事)
+    {id:"art01",title:"【杜のカエル】3月第1週 週次市況まとめ",price:0,isPaid:false,likeCount:45,commentCount:3,readCount:1240,publishAt:"2026-02-28T19:00:00+09:00"},
+    {id:"art02",title:"【杜のカエル】2月第4週 週次市況まとめ",price:0,isPaid:false,likeCount:38,commentCount:2,readCount:1050,publishAt:"2026-02-21T19:00:00+09:00"},
+    {id:"art03",title:"【杜のカエル】2月第3週 週次市況まとめ",price:0,isPaid:false,likeCount:32,commentCount:1,readCount:980,publishAt:"2026-02-14T19:00:00+09:00"},
+    {id:"art04",title:"【杜のカエル】2月第2週 週次市況まとめ",price:0,isPaid:false,likeCount:29,commentCount:2,readCount:870,publishAt:"2026-02-07T19:00:00+09:00"},
+    {id:"art05",title:"【杜のカエル】1月第4週 週次市況まとめ",price:0,isPaid:false,likeCount:41,commentCount:3,readCount:1120,publishAt:"2026-01-24T19:00:00+09:00"},
+    {id:"art06",title:"【杜の投資家】2026年1月の相場振り返り",price:0,isPaid:false,likeCount:56,commentCount:5,readCount:1820,publishAt:"2026-01-31T18:00:00+09:00"},
+    {id:"art07",title:"【杜の投資家】決算シーズン速報まとめ",price:0,isPaid:false,likeCount:34,commentCount:2,readCount:900,publishAt:"2026-01-17T18:00:00+09:00"},
+    {id:"art08",title:"【杜のカエル】2025年12月総括",price:0,isPaid:false,likeCount:62,commentCount:7,readCount:2100,publishAt:"2025-12-31T18:00:00+09:00"},
+    // Lvシリーズ (8記事)
+    {id:"art09",title:"Lv1→投資初心者がまず知るべき3つのこと",price:200,isPaid:true,likeCount:28,commentCount:4,readCount:640,publishAt:"2025-11-01T10:00:00+09:00"},
+    {id:"art10",title:"Lv2→株の選び方入門：PERとPBRを理解する",price:200,isPaid:true,likeCount:24,commentCount:2,readCount:520,publishAt:"2025-11-15T10:00:00+09:00"},
+    {id:"art11",title:"Lv3→決算書の読み方 完全解説",price:300,isPaid:true,likeCount:31,commentCount:5,readCount:720,publishAt:"2025-12-01T10:00:00+09:00"},
+    {id:"art12",title:"Lv4→ポートフォリオ構築の基本",price:200,isPaid:true,likeCount:19,commentCount:1,readCount:410,publishAt:"2025-12-15T10:00:00+09:00"},
+    {id:"art13",title:"Lv5→テクニカル分析入門",price:300,isPaid:true,likeCount:22,commentCount:2,readCount:480,publishAt:"2026-01-05T10:00:00+09:00"},
+    {id:"art14",title:"🐶初心者でもわかる！ETF完全ガイド",price:200,isPaid:true,likeCount:35,commentCount:6,readCount:890,publishAt:"2026-01-20T10:00:00+09:00"},
+    {id:"art15",title:"Lv0→投資を始める前に知っておくこと（無料）",price:0,isPaid:false,likeCount:89,commentCount:12,readCount:3200,publishAt:"2025-10-15T10:00:00+09:00"},
+    {id:"art32",title:"Lv6→資産運用の応用編〜ファクター投資入門",price:300,isPaid:true,likeCount:17,commentCount:2,readCount:380,publishAt:"2026-02-10T10:00:00+09:00"},
+    // シリーズ物語 (5記事)
+    {id:"art16",title:"🐼パンダと学ぶ投資の世界 第1話",price:0,isPaid:false,likeCount:42,commentCount:8,readCount:1100,publishAt:"2025-09-01T09:00:00+09:00"},
+    {id:"art17",title:"🐭ネズミの積立日記 〜1年間の記録〜",price:0,isPaid:false,likeCount:38,commentCount:5,readCount:950,publishAt:"2025-10-01T09:00:00+09:00"},
+    {id:"art18",title:"🐨コアラの長期投資戦略",price:0,isPaid:false,likeCount:29,commentCount:3,readCount:760,publishAt:"2025-11-01T09:00:00+09:00"},
+    {id:"art19",title:"🐈ねこの高配当株生活 第1章",price:200,isPaid:true,likeCount:18,commentCount:2,readCount:340,publishAt:"2026-01-10T09:00:00+09:00"},
+    {id:"art20",title:"🐘ゾウの時間投資論 第1話",price:0,isPaid:false,likeCount:52,commentCount:9,readCount:1450,publishAt:"2025-12-10T09:00:00+09:00"},
+    // コーヒー (3記事)
+    {id:"art21",title:"☕コーヒー片手に読む 週末投資の時間",price:0,isPaid:false,likeCount:67,commentCount:11,readCount:2300,publishAt:"2025-08-15T08:00:00+09:00"},
+    {id:"art22",title:"コーヒーブレイク投資術〜忙しい人の資産形成〜",price:300,isPaid:true,likeCount:44,commentCount:7,readCount:980,publishAt:"2025-09-20T08:00:00+09:00"},
+    {id:"art23",title:"☕朝のモーニングルーティンと投資チェック",price:0,isPaid:false,likeCount:33,commentCount:4,readCount:820,publishAt:"2025-10-20T08:00:00+09:00"},
+    // その他 (8記事)
+    {id:"art24",title:"MAERAスクリーナーで厳選！今週の注目銘柄",price:300,isPaid:true,likeCount:52,commentCount:8,readCount:1280,publishAt:"2026-02-07T07:00:00+09:00"},
+    {id:"art25",title:"2026年相場展望：AIと半導体を中心に",price:0,isPaid:false,likeCount:78,commentCount:14,readCount:2890,publishAt:"2026-01-02T07:00:00+09:00"},
+    {id:"art26",title:"高配当株 vs 成長株 どちらが正解か？",price:0,isPaid:false,likeCount:65,commentCount:10,readCount:2150,publishAt:"2025-11-20T07:00:00+09:00"},
+    {id:"art27",title:"新NISAで月3万円積立した場合のシミュレーション",price:0,isPaid:false,likeCount:91,commentCount:16,readCount:3450,publishAt:"2025-10-05T07:00:00+09:00"},
+    {id:"art28",title:"インフレ時代の資産防衛術",price:300,isPaid:true,likeCount:41,commentCount:6,readCount:1020,publishAt:"2025-12-20T07:00:00+09:00"},
+    {id:"art29",title:"株クラでバズった投稿の傾向分析",price:0,isPaid:false,likeCount:55,commentCount:9,readCount:1680,publishAt:"2026-01-28T07:00:00+09:00"},
+    {id:"art30",title:"2026年2月 MAERAスクリーナー結果",price:200,isPaid:true,likeCount:38,commentCount:5,readCount:820,publishAt:"2026-02-21T07:00:00+09:00"},
+    {id:"art31",title:"初めてのSBI証券口座開設ガイド",price:0,isPaid:false,likeCount:29,commentCount:3,readCount:1100,publishAt:"2025-09-10T07:00:00+09:00"},
+  ].map(a => ({ ...a, url: "#" }));
+
+  const purchases = [
+    // March 2026 (3件, ¥700)
+    {content:{key:"art30"},price:200,purchased_at:"2026-03-01T09:30:00+09:00",is_refund:false},
+    {content:{key:"art24"},price:300,purchased_at:"2026-03-01T11:20:00+09:00",is_refund:false},
+    {content:{key:"art30"},price:200,purchased_at:"2026-03-01T14:45:00+09:00",is_refund:false},
+    // February 2026 (20件, ¥5,000)
+    {content:{key:"art09"},price:200,purchased_at:"2026-02-28T10:00:00+09:00",is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:"2026-02-25T15:30:00+09:00",is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:"2026-02-20T09:15:00+09:00",is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:"2026-02-12T18:40:00+09:00",is_refund:false},
+    {content:{key:"art10"},price:200,purchased_at:"2026-02-27T11:00:00+09:00",is_refund:false},
+    {content:{key:"art10"},price:200,purchased_at:"2026-02-18T14:20:00+09:00",is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:"2026-02-26T10:30:00+09:00",is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:"2026-02-21T16:00:00+09:00",is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:"2026-02-10T09:00:00+09:00",is_refund:false},
+    {content:{key:"art12"},price:200,purchased_at:"2026-02-24T12:30:00+09:00",is_refund:false},
+    {content:{key:"art13"},price:300,purchased_at:"2026-02-22T11:20:00+09:00",is_refund:false},
+    {content:{key:"art13"},price:300,purchased_at:"2026-02-15T13:45:00+09:00",is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:"2026-02-23T10:10:00+09:00",is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:"2026-02-16T15:00:00+09:00",is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:"2026-02-08T10:45:00+09:00",is_refund:false},
+    {content:{key:"art22"},price:300,purchased_at:"2026-02-19T14:00:00+09:00",is_refund:false},
+    {content:{key:"art22"},price:300,purchased_at:"2026-02-11T09:30:00+09:00",is_refund:false},
+    {content:{key:"art24"},price:300,purchased_at:"2026-02-17T11:15:00+09:00",is_refund:false},
+    {content:{key:"art24"},price:300,purchased_at:"2026-02-05T16:30:00+09:00",is_refund:false},
+    {content:{key:"art28"},price:300,purchased_at:"2026-02-14T10:00:00+09:00",is_refund:false},
+    // January 2026 (18件, ¥4,400)
+    {content:{key:"art09"},price:200,purchased_at:"2026-01-31T10:00:00+09:00",is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:"2026-01-26T14:00:00+09:00",is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:"2026-01-20T09:30:00+09:00",is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:"2026-01-15T11:00:00+09:00",is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:"2026-01-08T10:15:00+09:00",is_refund:false},
+    {content:{key:"art10"},price:200,purchased_at:"2026-01-29T15:30:00+09:00",is_refund:false},
+    {content:{key:"art10"},price:200,purchased_at:"2026-01-22T10:00:00+09:00",is_refund:false},
+    {content:{key:"art10"},price:200,purchased_at:"2026-01-14T16:00:00+09:00",is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:"2026-01-28T09:00:00+09:00",is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:"2026-01-18T14:30:00+09:00",is_refund:false},
+    {content:{key:"art13"},price:300,purchased_at:"2026-01-27T11:00:00+09:00",is_refund:false},
+    {content:{key:"art13"},price:300,purchased_at:"2026-01-17T10:20:00+09:00",is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:"2026-01-25T15:00:00+09:00",is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:"2026-01-10T09:45:00+09:00",is_refund:false},
+    {content:{key:"art22"},price:300,purchased_at:"2026-01-24T13:00:00+09:00",is_refund:false},
+    {content:{key:"art22"},price:300,purchased_at:"2026-01-12T10:30:00+09:00",is_refund:false},
+    {content:{key:"art28"},price:300,purchased_at:"2026-01-23T11:00:00+09:00",is_refund:false},
+    {content:{key:"art28"},price:300,purchased_at:"2026-01-09T14:00:00+09:00",is_refund:false},
+    // December 2025 (8件, ¥1,900)
+    {content:{key:"art09"},price:200,purchased_at:"2025-12-28T10:00:00+09:00",is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:"2025-12-20T14:00:00+09:00",is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:"2025-12-12T09:30:00+09:00",is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:"2025-12-25T11:00:00+09:00",is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:"2025-12-22T15:00:00+09:00",is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:"2025-12-10T10:00:00+09:00",is_refund:false},
+    {content:{key:"art22"},price:300,purchased_at:"2025-12-18T14:30:00+09:00",is_refund:false},
+    {content:{key:"art13"},price:300,purchased_at:"2025-12-08T10:15:00+09:00",is_refund:false},
+  ];
+
+  // 記事別集計 (details: Dec+Jan+Feb)
+  const detailMap = {};
+  for (const p of purchases) {
+    if (p.is_refund) continue;
+    const d = new Date(p.purchased_at);
+    if (d.getFullYear() === 2025 && d.getMonth() < 11) continue; // Dec以前は除外
+    if (d.getFullYear() === 2026 && d.getMonth() > 1) continue;  // Mar以降は除外
+    const key = p.content?.key ?? "";
+    if (!key) continue;
+    if (!detailMap[key]) detailMap[key] = { key, count: 0, sales: 0 };
+    detailMap[key].count++;
+    detailMap[key].sales += p.price ?? 0;
+  }
+  const details = Object.values(detailMap);
+
+  return {
+    articles,
+    creator: { followerCount: 633, followingCount: 182, nickname: "brainy_quince872" },
+    sales: {
+      summary: {
+        sales_histories: [
+          { year: 2026, month: 3, amount: 700,  count: 3  },
+          { year: 2026, month: 2, amount: 5000, count: 20 },
+          { year: 2026, month: 1, amount: 4400, count: 18 },
+          { year: 2025, month: 12, amount: 1900, count: 8 },
+        ],
+      },
+      details,
+      purchases,
+    },
+    updatedAt: Date.now(),
+    hasViews: true,
+  };
+})();
+
+// ─── 売上データ抽出ヘルパー ──────────────────────────────────
+function extractSalesMonth(sales, year, month) {
+  if (!sales?.summary) return null;
+  const histories = sales.summary.sales_histories ?? sales.summary.histories ?? [];
+  return histories.find(h => h.year === year && h.month === month) ?? null;
+}
+function getSalesAmount(e) { return e ? (e.amount ?? e.sales ?? 0) : 0; }
+function getSalesCount(e)  { return e ? (e.count  ?? e.purchase_count ?? 0) : 0; }
+
+// ─── 売上セクション（Chrome API不使用） ──────────────────────
+function renderSalesSection(sales) {
+  const now = new Date();
+  const thisYear = now.getFullYear(), thisMonth = now.getMonth() + 1;
+  const lastYear  = thisMonth === 1 ? thisYear - 1 : thisYear;
+  const lastMonth = thisMonth === 1 ? 12 : thisMonth - 1;
+
+  const thisMo = extractSalesMonth(sales, thisYear, thisMonth);
+  const lastMo = extractSalesMonth(sales, lastYear, lastMonth);
+  const currentSales = getSalesAmount(thisMo);
+  const lastSales    = getSalesAmount(lastMo);
+  const purchases    = getSalesCount(thisMo);
+  const goal = 5000; // デモ用月次目標
+
+  document.getElementById("sCurrentSales").textContent    = fmtYen(currentSales);
+  document.getElementById("sCurrentSalesSub").textContent = `${thisMonth}月実績`;
+
+  if (lastSales > 0) {
+    const diff = currentSales - lastSales;
+    const rate = (diff / lastSales * 100).toFixed(1);
+    const sign = diff >= 0 ? "+" : "";
+    document.getElementById("sMoM").textContent    = `${sign}${rate}%`;
+    document.getElementById("sMoMSub").textContent = `先月 ${fmtYen(lastSales)}`;
+    document.getElementById("sMoMSub").className   = `sales-kpi-sub ${diff >= 0 ? "up" : "down"}`;
+  } else {
+    document.getElementById("sMoM").textContent    = "—";
+    document.getElementById("sMoMSub").textContent = "先月データなし";
+  }
+
+  document.getElementById("sPurchaseCount").textContent = `${purchases}件`;
+  document.getElementById("sPurchaseSub").textContent   = purchases > 0 && currentSales > 0
+    ? `平均 ${fmtYen(Math.round(currentSales / purchases))}/件` : "";
+
+  // 年間集計
+  const yearPurchases = (sales?.purchases ?? []).filter(p => {
+    if (p.is_refund) return false;
+    const d = new Date(p.purchased_at);
+    return !isNaN(d) && d.getFullYear() === thisYear;
+  });
+  const yearlySales = yearPurchases.reduce((s, p) => s + (p.price ?? 0), 0);
+  const yearlyCount = yearPurchases.length;
+  document.getElementById("sYearlySales").textContent        = fmtYen(yearlySales);
+  document.getElementById("sYearlySalesSub").textContent     = `${thisYear}年 累計`;
+  document.getElementById("sYearlyPurchases").textContent    = `${yearlyCount}件`;
+  document.getElementById("sYearlyPurchasesSub").textContent = yearlyCount > 0
+    ? `平均 ${fmtYen(Math.round(yearlySales / yearlyCount))}/件` : "";
+
+  // 目標バー
+  const rate    = Math.min(currentSales / goal * 100, 150);
+  const dispRate = (currentSales / goal * 100).toFixed(1);
+  document.getElementById("sGoalRate").textContent    = `${dispRate}%`;
+  document.getElementById("sGoalSub").textContent     = `目標 ${fmtYen(goal)}`;
+  document.getElementById("sGoalSub").className       = `sales-kpi-sub ${currentSales >= goal ? "up" : "neutral"}`;
+  document.getElementById("goalBarFill").style.width  = `${rate}%`;
+  document.getElementById("goalBarFill").className    = `goal-bar-fill ${currentSales >= goal ? "over" : ""}`;
+  document.getElementById("goalLabelLeft").textContent  = `${fmtYen(currentSales)} / ${fmtYen(goal)}`;
+  document.getElementById("goalLabelRight").textContent = `${dispRate}%`;
+}
+
+// ─── ファネル ─────────────────────────────────────────────────
+function renderFunnel(arts, sales) {
+  const paidArts  = arts.filter(a => a.isPaid);
+  const totalViews = arts.reduce((s, a) => s + (a.readCount >= 0 ? a.readCount : 0), 0);
+  const paidViews  = paidArts.reduce((s, a) => s + (a.readCount >= 0 ? a.readCount : 0), 0);
+  const purchases  = sales?.details?.reduce((s, d) => s + (d.count  ?? 0), 0) ?? 0;
+  const totalSales = sales?.details?.reduce((s, d) => s + (d.sales  ?? 0), 0) ?? 0;
+
+  document.getElementById("fTotalViews").textContent    = fmt(totalViews);
+  document.getElementById("fPaidViews").textContent     = fmt(paidViews);
+  document.getElementById("fPaidViewsSub").textContent  = `有料 ${paidArts.length}記事`;
+  document.getElementById("fPaidViewRate").textContent  = pct(paidViews / totalViews * 100);
+  document.getElementById("fPurchases").textContent     = `${purchases}件`;
+  document.getElementById("fPurchaseRate").textContent  = pct(purchases / paidViews * 100);
+  document.getElementById("fAvgPrice").textContent      = purchases > 0 ? fmtYen(Math.round(totalSales / purchases)) : "—";
+  document.getElementById("fAvgPriceSub").textContent   = "平均単価";
+}
+
+// ─── 有料記事テーブル ─────────────────────────────────────────
+function renderPaidTable(arts, sales) {
+  const detailMap = {};
+  for (const d of (sales?.details ?? [])) { if (d.key) detailMap[d.key] = d; }
+
+  const paidArts = arts.filter(a => a.isPaid).map(a => {
+    const det = detailMap[a.id];
+    return { ...a, artSales: det?.sales ?? -1, artPurchase: det?.count ?? null };
+  });
+
+  paidArts.sort((a, b) => {
+    if (paidSortKey === "likeCount") return (b.likeCount ?? 0) - (a.likeCount ?? 0);
+    if (paidSortKey === "sales")     return (b.artSales  ?? -1) - (a.artSales  ?? -1);
+    return (b.readCount ?? -1) - (a.readCount ?? -1);
+  });
+
+  const top10 = paidArts.slice(0, 10);
+  const maxViews = Math.max(...top10.map(a => a.readCount ?? 0), 1);
+
+  document.getElementById("paidTableBody").innerHTML = top10.map((a, i) => {
+    const artRate = (a.readCount > 0 && a.artPurchase != null) ? pct(a.artPurchase / a.readCount * 100) : "—";
+    const barW = a.readCount >= 0 ? Math.max(a.readCount / maxViews * 60, 2) : 0;
+    return `<tr>
+      <td class="col-sm col-r" style="color:#9ca3af">${i+1}</td>
+      <td><a href="${a.url}" class="art-link">${a.title.slice(0,52)}${a.title.length>52?"…":""}</a></td>
+      <td class="col-r col-sm n-view"><span class="purchase-bar" style="width:${barW}px"></span>${fmt(a.readCount)}</td>
+      <td class="col-r col-sm n-like">♥ ${fmt(a.likeCount)}</td>
+      <td class="col-r col-sm" style="color:#059669;font-weight:600">${a.artSales >= 0 ? fmtYen(a.artSales) : "—"}</td>
+      <td class="col-r col-sm" style="color:#6366f1;font-weight:600">${a.artPurchase != null ? `${a.artPurchase}件` : "—"}</td>
+      <td class="col-r col-sm" style="color:#8b5cf6">${artRate}</td>
+      <td class="col-r col-sm" style="color:#f59e0b">${a.readCount > 0 ? pct((a.likeCount + a.commentCount) / a.readCount * 100) : "—"}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ─── チャートリセット ─────────────────────────────────────────
+function resetChart(id, cfg) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id).getContext("2d"), cfg);
+}
+
+// ─── 売上推移チャート ─────────────────────────────────────────
+function getISOWeek(d) {
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
+  return Math.ceil((((dt - yearStart) / 86400000) + 1) / 7);
+}
+
+function aggregatePurchases(purchases, gran) {
+  const map = {};
+  for (const p of (purchases ?? [])) {
+    if (p.is_refund) continue;
+    const d = new Date(p.purchased_at);
+    if (isNaN(d)) continue;
+    let key;
+    if (gran === "day") {
+      key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    } else if (gran === "week") {
+      key = `${d.getFullYear()}-W${String(getISOWeek(d)).padStart(2,"0")}`;
+    } else {
+      key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    }
+    if (!map[key]) map[key] = { amount: 0, count: 0 };
+    map[key].amount += p.price ?? 0;
+    map[key].count++;
+  }
+  const labels = Object.keys(map).sort();
+  return { labels, amounts: labels.map(k => map[k].amount), counts: labels.map(k => map[k].count) };
+}
+
+function updateSalesCharts() {
+  const purchases = currentData?.sales?.purchases ?? [];
+  const { labels, amounts, counts } = aggregatePurchases(purchases, salesGranularity);
+  let cA = 0, cC = 0;
+  const cumAmounts = amounts.map(v => (cA += v));
+  const cumCounts  = counts.map(v  => (cC += v));
+
+  resetChart("salesChart", {
+    data: { labels, datasets: [
+      { type:"bar",  label:"期間別売上", data:amounts,
+        backgroundColor:"rgba(99,102,241,.55)", borderRadius:4, yAxisID:"y", order:2 },
+      { type:"line", label:"累積売上", data:cumAmounts,
+        borderColor:"#6366f1", backgroundColor:"rgba(99,102,241,.06)",
+        tension:.3, fill:true, pointRadius:3, borderWidth:2, yAxisID:"y2", order:1 },
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:"index", intersect:false },
+      plugins:{ legend:{ labels:{ boxWidth:12, padding:12 }}},
+      scales:{
+        x:{ ticks:{ color:"#9ca3af" }, grid:{ display:false }},
+        y:{ ticks:{ color:"#6366f1", callback: v => `¥${v.toLocaleString()}` }, grid:{ color:"#f3f4f6" }, position:"left",
+            title:{ display:true, text:"期間別", color:"#6366f1", font:{size:9}}},
+        y2:{ ticks:{ color:"#a78bfa", callback: v => `¥${v.toLocaleString()}` }, grid:{ display:false }, position:"right",
+             title:{ display:true, text:"累積", color:"#a78bfa", font:{size:9}}},
+      },
+    },
+  });
+
+  resetChart("purchaseChart", {
+    data: { labels, datasets: [
+      { type:"bar",  label:"期間別件数", data:counts,
+        backgroundColor:"rgba(16,185,129,.55)", borderRadius:4, yAxisID:"y", order:2 },
+      { type:"line", label:"累積件数", data:cumCounts,
+        borderColor:"#10b981", backgroundColor:"rgba(16,185,129,.06)",
+        tension:.3, fill:true, pointRadius:3, borderWidth:2, yAxisID:"y2", order:1 },
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:"index", intersect:false },
+      plugins:{ legend:{ labels:{ boxWidth:12, padding:12 }}},
+      scales:{
+        x:{ ticks:{ color:"#9ca3af" }, grid:{ display:false }},
+        y:{ ticks:{ color:"#10b981", precision:0, stepSize:1 }, grid:{ color:"#f3f4f6" }, position:"left",
+            title:{ display:true, text:"期間別", color:"#10b981", font:{size:9}}},
+        y2:{ ticks:{ color:"#34d399", precision:0 }, grid:{ display:false }, position:"right",
+             title:{ display:true, text:"累積", color:"#34d399", font:{size:9}}},
+      },
+    },
+  });
+}
+
+// ─── コンテンツチャート ───────────────────────────────────────
+function articleKey(publishAt, gran) {
+  const d = new Date(publishAt);
+  if (gran === "day")  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  if (gran === "week") return `${d.getFullYear()}-W${String(getISOWeek(d)).padStart(2,"0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+
+function updateCharts() {
+  const gran = chartGran === "all" ? "month" : chartGran;
+  const map  = {};
+  for (const a of allArticles) {
+    if (!a.publishAt) continue;
+    const key = articleKey(a.publishAt, gran);
+    if (!map[key]) map[key] = { posts:0, likes:0, comments:0, views:0 };
+    map[key].posts++;
+    map[key].likes    += a.likeCount    ?? 0;
+    map[key].comments += a.commentCount ?? 0;
+    if (a.readCount >= 0) map[key].views += a.readCount;
+  }
+  const labels = Object.keys(map).sort();
+  const posts  = labels.map(k => map[k].posts);
+  const likes  = labels.map(k => map[k].likes);
+  const views  = labels.map(k => map[k].views);
+  const engRate = labels.map(k => {
+    const v = map[k].views, l = map[k].likes, c = map[k].comments;
+    return v > 0 ? parseFloat(((l + c) / v * 100).toFixed(2)) : null;
+  });
+  const tickLimit = labels.length <= 14 ? labels.length : 10;
+
+  resetChart("trendChart", {
+    data: { labels, datasets: [
+      { type:"line", label:"いいね数", data:likes,
+        borderColor:"#6366f1", backgroundColor:"rgba(99,102,241,.08)",
+        tension:.3, fill:true, pointRadius:2, borderWidth:2, yAxisID:"y" },
+      { type:"bar",  label:"投稿数", data:posts,
+        backgroundColor:"rgba(99,102,241,.55)", borderRadius:4, yAxisID:"y2" },
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:"index", intersect:false },
+      plugins:{ legend:{ labels:{ boxWidth:12, padding:12 }}},
+      scales:{
+        x:{ ticks:{ color:"#9ca3af", maxTicksLimit:tickLimit }, grid:{ display:false }},
+        y:{ ticks:{ color:"#6366f1" }, grid:{ color:"#f3f4f6" }, position:"left",
+            title:{ display:true, text:"いいね", color:"#6366f1", font:{size:9}}},
+        y2:{ ticks:{ color:"#6366f1", stepSize:1, precision:0 }, grid:{ display:false }, position:"right",
+             title:{ display:true, text:"投稿数", color:"#6366f1", font:{size:9}}},
+      },
+    },
+  });
+
+  resetChart("engChart", {
+    data: { labels, datasets: [
+      { type:"bar",  label:"閲覧数(PV)", data:views,
+        backgroundColor:"rgba(99,102,241,.40)", borderRadius:4, yAxisID:"y" },
+      { type:"line", label:"エンゲージメント率(%)", data:engRate,
+        borderColor:"#f59e0b", backgroundColor:"rgba(245,158,11,.07)",
+        tension:.4, fill:true, pointRadius:2, borderWidth:2, yAxisID:"y2", spanGaps:true },
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:"index", intersect:false },
+      plugins:{ legend:{ labels:{ boxWidth:12, padding:12 }}},
+      scales:{
+        x:{ ticks:{ color:"#9ca3af", maxTicksLimit:tickLimit }, grid:{ display:false }},
+        y:{ ticks:{ color:"#6366f1" }, grid:{ color:"#f3f4f6" }, position:"left",
+            title:{ display:true, text:"閲覧数", color:"#6366f1", font:{size:9}}},
+        y2:{ ticks:{ color:"#f59e0b", callback: v => v != null ? v + "%" : "" }, grid:{ display:false }, position:"right",
+             title:{ display:true, text:"ENG率", color:"#f59e0b", font:{size:9}}},
+      },
+    },
+  });
+}
+
+// ─── バブルチャート（記事） ───────────────────────────────────
+function renderArticleBubble(arts, sales) {
+  const detailMap = {};
+  for (const d of (sales?.details ?? [])) { if (d.key) detailMap[d.key] = d; }
+
+  const artsWithPV = arts.filter(a => a.readCount >= 0);
+  if (!artsWithPV.length) return;
+  const maxSales = Math.max(...artsWithPV.map(a => detailMap[a.id]?.sales ?? 0), 1);
+
+  const pvSorted   = [...artsWithPV].map(a => a.readCount).sort((a, b) => a - b);
+  const likeSorted = [...artsWithPV].map(a => a.likeCount).sort((a, b) => a - b);
+  const mid      = Math.floor(pvSorted.length / 2);
+  const medPV    = pvSorted[mid];
+  const medLikes = likeSorted[mid];
+
+  function toRadius(s) {
+    if (!s || s <= 0) return 5;
+    return Math.round(5 + Math.sqrt(s / maxSales) * 20);
+  }
+
+  const paid = artsWithPV.filter(a => a.isPaid).map(a => ({
+    x: a.readCount, y: a.likeCount,
+    r: toRadius(detailMap[a.id]?.sales ?? 0),
+    label: a.title, url: a.url, sales: detailMap[a.id]?.sales ?? 0,
+  }));
+  const free = artsWithPV.filter(a => !a.isPaid).map(a => ({
+    x: a.readCount, y: a.likeCount, r: 5, label: a.title, url: a.url, sales: 0,
+  }));
+
+  const quadPlugin = {
+    id: "quadrant",
+    afterDraw(chart) {
+      const { ctx, scales: { x: xs, y: ys }, chartArea: ca } = chart;
+      const px = xs.getPixelForValue(medPV);
+      const py = ys.getPixelForValue(medLikes);
+      ctx.save();
+      ctx.strokeStyle = "rgba(99,102,241,0.22)"; ctx.setLineDash([5,5]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(px, ca.top);   ctx.lineTo(px, ca.bottom); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ca.left, py);  ctx.lineTo(ca.right, py);  ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = "bold 10px 'Noto Sans JP',sans-serif";
+      const lbls = [
+        { text:"🌟 スター",   x:ca.right-8, y:ca.top+16,   align:"right" },
+        { text:"📖 SEO型",    x:ca.right-8, y:ca.bottom-8, align:"right" },
+        { text:"❤️ ファン型", x:ca.left+8,  y:ca.top+16,   align:"left"  },
+        { text:"🔧 要改善",   x:ca.left+8,  y:ca.bottom-8, align:"left"  },
+      ];
+      for (const l of lbls) {
+        ctx.fillStyle = "rgba(99,102,241,0.45)"; ctx.textAlign = l.align;
+        ctx.fillText(l.text, l.x, l.y);
+      }
+      ctx.restore();
+    },
+  };
+
+  const shadowPlugin = {
+    id: "bubbleShadow",
+    beforeDatasetsDraw(chart) {
+      const active = chart.getActiveElements();
+      if (!active.length) return;
+      const { ctx } = chart;
+      for (const el of active) {
+        const { x, y } = el.element;
+        const r = el.element.options.radius + (el.element.options.hoverRadius ?? 0);
+        ctx.save();
+        ctx.shadowColor = "rgba(0,0,0,0.28)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+        ctx.fillStyle = el.element.options.hoverBackgroundColor ?? el.element.options.backgroundColor;
+        ctx.fill(); ctx.restore();
+      }
+    },
+  };
+
+  resetChart("articleBubble", {
+    type: "bubble", plugins: [quadPlugin, shadowPlugin],
+    data: { datasets: [
+      { label:"有料記事", data:paid,
+        backgroundColor:"rgba(99,102,241,0.55)", borderColor:"rgba(99,102,241,0.8)",
+        borderWidth:1, hoverRadius:7, hoverBorderWidth:3, hoverBorderColor:"#fff",
+        hoverBackgroundColor:"rgba(99,102,241,0.85)" },
+      { label:"無料記事", data:free,
+        backgroundColor:"rgba(14,165,233,0.40)", borderColor:"rgba(14,165,233,0.65)",
+        borderWidth:1, hoverRadius:7, hoverBorderWidth:3, hoverBorderColor:"#fff",
+        hoverBackgroundColor:"rgba(14,165,233,0.70)" },
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      onHover:(_, els, chart) => { chart.canvas.style.cursor = els.length ? "pointer" : "default"; },
+      plugins: {
+        legend:{ labels:{ boxWidth:12, padding:14 }},
+        tooltip:{ callbacks:{ label(ctx) {
+          const d = ctx.raw;
+          const lines = [`📄 ${[...d.label].slice(0,28).join("")}`];
+          lines.push(`👁 ${d.x.toLocaleString()}  ❤ ${d.y}`);
+          if (d.sales > 0) lines.push(`💰 売上 ¥${d.sales.toLocaleString()}`);
+          return lines;
+        }}},
+      },
+      scales: {
+        x:{ title:{ display:true, text:"閲覧数（PV）", color:"#6b7280", font:{size:10}},
+            ticks:{ color:"#9ca3af", callback: v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v },
+            grid:{ color:"#f3f4f6" }},
+        y:{ title:{ display:true, text:"いいね数", color:"#6b7280", font:{size:10}},
+            ticks:{ color:"#9ca3af" }, grid:{ color:"#f3f4f6" }},
+      },
+    },
+  });
+}
+
+// ─── バブルチャート（カテゴリ） ───────────────────────────────
+function renderCategoryBubble(arts) {
+  const catMap = {};
+  for (const a of arts) {
+    const cat = a.category;
+    if (!catMap[cat]) catMap[cat] = { count:0, pvSum:0, pvN:0, likeSum:0, cmtSum:0 };
+    catMap[cat].count++;
+    catMap[cat].likeSum += a.likeCount ?? 0;
+    catMap[cat].cmtSum  += a.commentCount ?? 0;
+    if (a.readCount >= 0) { catMap[cat].pvSum += a.readCount; catMap[cat].pvN++; }
+  }
+  const maxEng = 0.5;
+  const datasets = Object.entries(catMap).map(([cat, d]) => {
+    const avgPV   = d.pvN > 0 ? Math.round(d.pvSum / d.pvN) : 0;
+    const engRate = d.pvSum > 0 ? (d.likeSum + d.cmtSum) / d.pvSum : 0;
+    const r   = Math.max(8, Math.round(8 + Math.sqrt(engRate / maxEng) * 22));
+    const col = CAT_COLORS[cat] ?? "#94a3b8";
+    return {
+      label: cat,
+      data: [{ x:d.count, y:avgPV, r, label:cat, engRate:(engRate*100).toFixed(1), avgPV, count:d.count }],
+      backgroundColor: col + "99", borderColor: col, borderWidth:2,
+      hoverRadius:8, hoverBorderWidth:3, hoverBorderColor:"#fff",
+      hoverBackgroundColor: col + "cc",
+    };
+  });
+
+  const shadowPlugin2 = {
+    id:"catBubbleShadow",
+    beforeDatasetsDraw(chart) {
+      const active = chart.getActiveElements();
+      if (!active.length) return;
+      const { ctx } = chart;
+      for (const el of active) {
+        const { x, y } = el.element;
+        const r = el.element.options.radius + (el.element.options.hoverRadius ?? 0);
+        ctx.save();
+        ctx.shadowColor = "rgba(0,0,0,0.28)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+        ctx.fillStyle = el.element.options.hoverBackgroundColor ?? el.element.options.backgroundColor;
+        ctx.fill(); ctx.restore();
+      }
+    },
+  };
+  const labelPlugin = {
+    id:"catLabel",
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      ctx.save();
+      ctx.font = "bold 10px 'Noto Sans JP',sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      for (const ds of chart.data.datasets) {
+        const meta = chart.getDatasetMeta(chart.data.datasets.indexOf(ds));
+        if (meta.hidden) continue;
+        for (const pt of meta.data) { ctx.fillStyle = "#fff"; ctx.fillText(ds.label, pt.x, pt.y); }
+      }
+      ctx.restore();
+    },
+  };
+
+  resetChart("categoryBubble", {
+    type:"bubble", plugins:[shadowPlugin2, labelPlugin],
+    data:{ datasets },
+    options:{ responsive:true, maintainAspectRatio:false,
+      onHover:(_, els, chart) => { chart.canvas.style.cursor = els.length ? "pointer" : "default"; },
+      plugins:{
+        legend:{ labels:{ boxWidth:12, padding:12 }},
+        tooltip:{ callbacks:{ label(ctx) {
+          const d = ctx.raw;
+          return [`📂 ${d.label}`, `記事数: ${d.count}件`, `平均PV: ${d.avgPV.toLocaleString()}`, `ENG率: ${d.engRate}%`];
+        }}},
+      },
+      scales:{
+        x:{ title:{ display:true, text:"記事数", color:"#6b7280", font:{size:10}},
+            ticks:{ color:"#9ca3af", stepSize:1, precision:0 }, grid:{ color:"#f3f4f6" }},
+        y:{ title:{ display:true, text:"平均閲覧数（PV）", color:"#6b7280", font:{size:10}},
+            ticks:{ color:"#9ca3af", callback: v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v },
+            grid:{ color:"#f3f4f6" }},
+      },
+    },
+  });
+}
+
+// ─── 全記事テーブル ───────────────────────────────────────────
+function renderTable() {
+  document.getElementById("tableBody").innerHTML = allArticles.map((a, i) => {
+    const catCls = CAT_BG[a.category] ?? "c-other";
+    const paid   = a.isPaid ? '<span class="badge b-paid">有料</span>' : '<span class="badge b-free">無料</span>';
+    const artEng = (a.readCount > 0) ? pct(((a.likeCount + a.commentCount) / a.readCount) * 100) : "—";
+    return `<tr data-cat="${a.category}" data-title="${a.title.toLowerCase()}">
+      <td class="col-sm col-r" style="color:#9ca3af">${i+1}</td>
+      <td><a href="${a.url}" class="art-link">${a.title.slice(0,56)}${a.title.length>56?"…":""}</a></td>
+      <td><span class="cat-badge ${catCls}">${a.category}</span></td>
+      <td class="col-sm" style="color:#6b7280;font-size:.72rem">${fmtDate(a.publishAt)}</td>
+      <td>${paid}</td>
+      <td class="col-r col-sm n-view">${fmt(a.readCount)}</td>
+      <td class="col-r col-sm n-like">♥ ${fmt(a.likeCount)}</td>
+      <td class="col-r col-sm n-cmt">💬 ${a.commentCount}</td>
+      <td class="col-r col-sm" style="color:#8b5cf6;font-size:.75rem">${artEng}</td>
+    </tr>`;
+  }).join("");
+  applyFilter();
+}
+
+function applyFilter() {
+  const q = (document.getElementById("searchInput")?.value ?? "").toLowerCase();
+  let visible = 0;
+  document.querySelectorAll("#tableBody tr").forEach(row => {
+    const show = (!q || (row.dataset.title ?? "").includes(q))
+               && (currentCat === "all" || row.dataset.cat === currentCat);
+    row.style.display = show ? "" : "none";
+    if (show) visible++;
+  });
+  const info = document.getElementById("tblInfo");
+  if (info) info.textContent = `表示中: ${visible} / ${allArticles.length} 件`;
+}
+
+// ─── タブ切り替え ─────────────────────────────────────────────
+function switchTab(tabId) {
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById(`tab-${tabId}`).classList.add("active");
+  document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add("active");
+  requestAnimationFrame(() => Object.values(charts).forEach(c => c?.resize()));
+}
+
+// ─── CSV エクスポート ─────────────────────────────────────────
+function exportCSV() {
+  if (!allArticles.length) return;
+  const header = ["#","タイトル","カテゴリ","投稿日時","種別","閲覧数","いいね","コメント","ENG率"];
+  const rows = allArticles.map((a, i) => {
+    const artEng = (a.readCount > 0) ? ((a.likeCount + a.commentCount) / a.readCount * 100).toFixed(2) + "%" : "";
+    return [i+1, `"${a.title.replace(/"/g,'""')}"`, a.category, fmtDate(a.publishAt),
+      a.isPaid ? "有料" : "無料", a.readCount, a.likeCount, a.commentCount, artEng].join(",");
+  });
+  const blob = new Blob(["\uFEFF" + [header.join(","), ...rows].join("\n")], { type:"text/csv" });
+  const url  = URL.createObjectURL(blob);
+  const el   = document.createElement("a");
+  el.href = url; el.download = "note_articles_demo.csv"; el.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Gemini デモ出力 ──────────────────────────────────────────
+function showDemoGeminiOutput() {
+  const demoText = `総合スコア：6/10
+
+①タイトルSEO スコア：5/10
+課題：記事タイトルに検索キーワードが不足しており、SEO流入が限定的
+提案：「高配当株」「NISA 初心者」「積立投資 シミュレーション」をLvシリーズタイトルに追加する
+
+②無料→有料導線 スコア：6/10
+課題：いいね上位の無料記事（新NISA・高配当株）から有料記事へのリンクがない
+提案：人気無料記事末尾にLv1〜Lv3への内部リンクを追加し購入率2倍を狙う
+
+③価格・構成 スコア：7/10
+課題：¥200と¥300の混在で読者の価格判断が迷いやすい
+提案：Lvシリーズを統一¥200に、深堀り系（MAERA/決算書解説）は¥300に固定
+
+④次に書く記事 スコア：6/10
+根拠：PV上位「新NISA積立シミュレーション」が有料化されておらず機会損失
+テーマ案：「新NISAで10年後いくらになる？ 年収別シミュレーション完全版」¥300`;
+
+  // renderGeminiOutput互換の簡易レンダラー
+  function scoreColor(n) {
+    return n >= 7 ? "#10b981" : n >= 4 ? "#f59e0b" : "#ef4444";
+  }
+  const overallMatch = demoText.match(/総合スコア[：:]\s*(\d+)\s*\/\s*10/);
+  const overallScore = overallMatch ? parseInt(overallMatch[1]) : null;
+  const sections = demoText.split(/(?=①|②|③|④)/).filter(s => /^[①②③④]/.test(s.trim()));
+
+  let html = "";
+  if (overallScore !== null) {
+    const oc = scoreColor(overallScore);
+    html += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:10px 16px;background:#f0f9ff;border-radius:10px;border:1px solid #bae6fd">
+      <span style="font-size:0.85rem;font-weight:700;color:#1f2937">総合スコア</span>
+      <span style="background:${oc};color:#fff;padding:3px 14px;border-radius:14px;font-size:1rem;font-weight:800">${overallScore}/10</span>
+    </div>`;
+  }
+  const cards = sections.map(s => {
+    const scoreMatch = s.match(/スコア[：:]\s*(\d+)\s*\/\s*10/);
+    const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
+    const color = score !== null ? scoreColor(score) : "#6366f1";
+    const lines = s.replace(/スコア[：:]\s*\d+\s*\/\s*10/, "").split("\n").map(l => l.trim()).filter(l => l);
+    const heading = lines[0] ?? "";
+    const body = lines.slice(1).map(l => {
+      if (/^(課題|根拠)[：:]/.test(l)) {
+        const content = l.replace(/^(課題|根拠)[：:]/, "");
+        const label   = l.match(/^(課題|根拠)/)[0];
+        return `<div style="margin-bottom:6px"><span style="color:${color};font-weight:700;font-size:0.75rem">${label}：</span><span style="color:#6b7280;font-size:0.78rem">${content}</span></div>`;
+      }
+      if (/^(提案|テーマ案)[：:]/.test(l)) {
+        const content = l.replace(/^(提案|テーマ案)[：:]/, "");
+        const label   = l.match(/^(提案|テーマ案)/)[0];
+        return `<div style="margin-top:4px"><span style="color:${color};font-weight:700;font-size:0.8rem">${label}：</span><span style="color:#111827;font-weight:600;font-size:0.82rem">${content}</span></div>`;
+      }
+      return `<span style="color:#374151;font-size:0.8rem">${l}</span>`;
+    }).join("");
+    const badge = score !== null ? `<span style="background:${color};color:#fff;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:700;margin-left:8px;vertical-align:middle">${score}/10</span>` : "";
+    return `<div style="padding:12px 14px;background:#f9fafb;border-radius:10px;border-left:3px solid ${color}">
+      <div style="font-weight:700;color:#1f2937;margin-bottom:8px;font-size:0.88rem">${heading}${badge}</div>
+      <div style="line-height:1.6">${body}</div>
+    </div>`;
+  });
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">${cards.join("")}</div>`;
+  document.getElementById("aiOutput").innerHTML = html;
+}
+
+// ─── メインレンダリング ──────────────────────────────────────
+function render(data) {
+  currentData = data;
+  allArticles = data.articles.map(a => ({
+    ...a,
+    category: categorize(a.title),
+    dateStr:  fmtDate(a.publishAt),
+    dateObj:  new Date(a.publishAt),
+  })).sort((a, b) => b.dateObj - a.dateObj);
+
+  const arts       = allArticles;
+  const total      = arts.length;
+  const totalLikes = arts.reduce((s, a) => s + (a.likeCount    ?? 0), 0);
+  const totalCmt   = arts.reduce((s, a) => s + (a.commentCount ?? 0), 0);
+  const totalViews = arts.reduce((s, a) => s + (a.readCount >= 0 ? a.readCount : 0), 0);
+  const avgLikes   = total ? (totalLikes / total).toFixed(1) : 0;
+  const engRate    = totalViews > 0 ? pct(((totalLikes + totalCmt) / totalViews) * 100) : "—";
+
+  document.getElementById("updatedAt").textContent = "DEMO DATA";
+
+  renderSalesSection(data.sales ?? null);
+  renderFunnel(arts, data.sales ?? null);
+  renderPaidTable(arts, data.sales ?? null);
+  showDemoGeminiOutput();
+
+  const cr = data.creator ?? {};
+  document.getElementById("kFollowers").textContent    = fmt(cr.followerCount);
+  document.getElementById("kFollowersSub").textContent = "現在のフォロワー数";
+  document.getElementById("kFollowing").textContent    = fmt(cr.followingCount);
+  document.getElementById("kFollowingSub").textContent = "現在のフォロー数";
+  document.getElementById("kViews").textContent        = fmt(totalViews);
+  document.getElementById("kViewsSub").textContent     = `${arts.length}件取得済み`;
+  document.getElementById("kLikes").textContent        = fmt(totalLikes);
+  document.getElementById("kLikesSub").textContent     = `平均 ${avgLikes} / 記事`;
+  document.getElementById("kEng").textContent          = engRate;
+  document.getElementById("kEngSub").textContent       = "(いいね+コメント)÷閲覧数";
+  document.getElementById("kArticles").textContent     = total;
+  document.getElementById("kArticlesSub").textContent  = `有料 ${arts.filter(a=>a.isPaid).length} / 無料 ${arts.filter(a=>!a.isPaid).length}`;
+  document.getElementById("kComments").textContent     = fmt(totalCmt);
+  document.getElementById("kCommentsSub").textContent  = `平均 ${total ? (totalCmt/total).toFixed(1) : 0} / 記事`;
+
+  const catData = {};
+  for (const a of arts) {
+    if (!catData[a.category]) catData[a.category] = { count:0, likes:0 };
+    catData[a.category].count++;
+    catData[a.category].likes += a.likeCount ?? 0;
+  }
+  const catLabels = Object.keys(catData);
+  const catCols   = catLabels.map(k => CAT_COLORS[k] ?? "#94a3b8");
+
+  resetChart("catChart", {
+    type:"doughnut",
+    data:{ labels:catLabels, datasets:[{ data:catLabels.map(k => catData[k].count),
+      backgroundColor:catCols, borderWidth:2, borderColor:"#fff" }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:"right", labels:{ boxWidth:12, padding:10 }}}},
+  });
+  resetChart("catLikeChart", {
+    type:"bar",
+    data:{ labels:catLabels, datasets:[{ label:"いいね数",
+      data:catLabels.map(k => catData[k].likes), backgroundColor:catCols, borderRadius:6 }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false }},
+      scales:{ x:{ ticks:{ color:"#6b7280" }, grid:{ display:false }},
+               y:{ ticks:{ color:"#6b7280" }, grid:{ color:"#f3f4f6" }}}},
+  });
+
+  updateCharts();
+  updateSalesCharts();
+  renderArticleBubble(allArticles, data.sales ?? null);
+  renderCategoryBubble(allArticles);
+
+  const top10 = [...arts].sort((a, b) => b.likeCount - a.likeCount).slice(0, 10);
+  document.getElementById("top10").innerHTML = top10.map((a, i) => `
+    <div class="top-item">
+      <div class="top-rank">${MEDALS[i] ?? `<span style="font-size:.8rem">${i+1}</span>`}</div>
+      <div class="top-info">
+        <a href="${a.url}" class="top-title-link">${a.title.slice(0,65)}${a.title.length>65?"…":""}</a>
+        <div class="top-meta">${a.dateStr} · ${a.category}</div>
+      </div>
+      <div class="top-nums">
+        <span class="n-view">👁 ${fmt(a.readCount)}</span>
+        <span class="n-like">♥ ${fmt(a.likeCount)}</span>
+        <span class="n-cmt">💬 ${a.commentCount}</span>
+      </div>
+    </div>`).join("");
+
+  renderTable();
+
+  document.getElementById("footerText").textContent =
+    `Maa Note Analysis DEMO — ${total}記事 · いいね ${totalLikes.toLocaleString()}`;
+}
+
+// ─── イベントリスナー & 起動 ──────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  render(DEMO_DATA);
+
+  document.querySelectorAll(".tab-btn[data-tab]").forEach(btn => {
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  });
+
+  document.querySelectorAll(".sgran-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      salesGranularity = btn.dataset.gran;
+      document.querySelectorAll(".sgran-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      updateSalesCharts();
+    });
+  });
+
+  document.querySelectorAll(".period-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      chartGran = btn.dataset.gran;
+      document.querySelectorAll(".period-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      updateCharts();
+    });
+  });
+
+  document.querySelectorAll(".paid-sort-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      paidSortKey = btn.dataset.psort;
+      document.querySelectorAll(".paid-sort-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderPaidTable(allArticles, currentData?.sales ?? null);
+    });
+  });
+
+  document.querySelectorAll(".f-btn[data-cat]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentCat = btn.dataset.cat;
+      document.querySelectorAll(".f-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      applyFilter();
+    });
+  });
+
+  document.getElementById("searchInput")?.addEventListener("input", applyFilter);
+  document.getElementById("csvBtn").addEventListener("click", exportCSV);
+});
+</script>
+</body>
+</html>
