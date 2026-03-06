@@ -355,23 +355,56 @@ function getISOWeek(d) {
 
 function aggregatePurchases(purchases, gran) {
   const map = {};
+  let minDate = null;
+
   for (const p of (purchases ?? [])) {
     if (p.is_refund) continue;
     const d = new Date(p.purchased_at);
     if (isNaN(d)) continue;
+    if (!minDate || d < minDate) minDate = d;
     let key;
     if (gran === "day") {
       key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
     } else if (gran === "week") {
       key = `${d.getFullYear()}-W${String(getISOWeek(d)).padStart(2,"0")}`;
     } else {
-      // month / all → 月別集計
       key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
     }
     if (!map[key]) map[key] = { amount: 0, count: 0 };
     map[key].amount += p.price ?? 0;
     map[key].count++;
   }
+
+  // 最初の購入日〜今日まで空白を0で埋める
+  if (minDate) {
+    const today = new Date();
+    if (gran === "day") {
+      const cur = new Date(minDate); cur.setHours(0,0,0,0);
+      const end = new Date(today);  end.setHours(0,0,0,0);
+      while (cur <= end) {
+        const key = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,"0")}-${String(cur.getDate()).padStart(2,"0")}`;
+        if (!map[key]) map[key] = { amount: 0, count: 0 };
+        cur.setDate(cur.getDate() + 1);
+      }
+    } else if (gran === "week") {
+      const cur = new Date(minDate); cur.setHours(0,0,0,0);
+      const end = new Date(today);  end.setHours(0,0,0,0);
+      while (cur <= end) {
+        const key = `${cur.getFullYear()}-W${String(getISOWeek(cur)).padStart(2,"0")}`;
+        if (!map[key]) map[key] = { amount: 0, count: 0 };
+        cur.setDate(cur.getDate() + 7);
+      }
+    } else {
+      const cur = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+      const end = new Date(today.getFullYear(), today.getMonth(), 1);
+      while (cur <= end) {
+        const key = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,"0")}`;
+        if (!map[key]) map[key] = { amount: 0, count: 0 };
+        cur.setMonth(cur.getMonth() + 1);
+      }
+    }
+  }
+
   const labels = Object.keys(map).sort();
   return { labels, amounts: labels.map(k => map[k].amount), counts: labels.map(k => map[k].count) };
 }
