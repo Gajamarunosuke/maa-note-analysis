@@ -356,7 +356,9 @@ function getISOWeek(d) {
 function aggregatePurchases(purchases, gran) {
   const map   = {};
   const today = new Date();
-  const since = new Date(today.getFullYear(), today.getMonth() - 2, today.getDate());
+  const since = gran === "day"  ? new Date(today.getFullYear(), today.getMonth() - 2,  today.getDate())
+              : gran === "week" ? new Date(today.getFullYear(), today.getMonth() - 6,  today.getDate())
+              :                   new Date(today.getFullYear() - 2, today.getMonth(), today.getDate());
 
   for (const p of (purchases ?? [])) {
     if (p.is_refund) continue;
@@ -483,7 +485,9 @@ function updateCharts() {
   const gran  = (chartGran === "all") ? "month" : chartGran;
   const map   = {};
   const today = new Date();
-  const since = new Date(today.getFullYear(), today.getMonth() - 2, today.getDate());
+  const since = gran === "day"  ? new Date(today.getFullYear(), today.getMonth() - 2,  today.getDate())
+              : gran === "week" ? new Date(today.getFullYear(), today.getMonth() - 6,  today.getDate())
+              :                   new Date(today.getFullYear() - 2, today.getMonth(), today.getDate());
 
   for (const a of allArticles) {
     if (!a.publishAt) continue;
