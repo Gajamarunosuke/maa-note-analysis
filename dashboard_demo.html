@@ -540,109 +540,130 @@ function pct(n) { return n == null || n < 0 ? "—" : n.toFixed(2) + "%"; }
 
 // ─── デモデータ ──────────────────────────────────────────────
 const DEMO_DATA = (function() {
+  // 「今日からN日前」のISO文字列を返すヘルパー（時間を指定可）
+  const _now = new Date();
+  const daysAgo = (n, h = 10) => {
+    const d = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate() - n, h, 0, 0);
+    return d.toISOString();
+  };
+
   const articles = [
     // 市況夕刊 (8記事)
-    {id:"art01",title:"【杜のカエル】3月第1週 週次市況まとめ",price:0,isPaid:false,likeCount:45,commentCount:3,readCount:1240,publishAt:"2026-02-28T19:00:00+09:00"},
-    {id:"art02",title:"【杜のカエル】2月第4週 週次市況まとめ",price:0,isPaid:false,likeCount:38,commentCount:2,readCount:1050,publishAt:"2026-02-21T19:00:00+09:00"},
-    {id:"art03",title:"【杜のカエル】2月第3週 週次市況まとめ",price:0,isPaid:false,likeCount:32,commentCount:1,readCount:980,publishAt:"2026-02-14T19:00:00+09:00"},
-    {id:"art04",title:"【杜のカエル】2月第2週 週次市況まとめ",price:0,isPaid:false,likeCount:29,commentCount:2,readCount:870,publishAt:"2026-02-07T19:00:00+09:00"},
-    {id:"art05",title:"【杜のカエル】1月第4週 週次市況まとめ",price:0,isPaid:false,likeCount:41,commentCount:3,readCount:1120,publishAt:"2026-01-24T19:00:00+09:00"},
-    {id:"art06",title:"【杜の投資家】2026年1月の相場振り返り",price:0,isPaid:false,likeCount:56,commentCount:5,readCount:1820,publishAt:"2026-01-31T18:00:00+09:00"},
-    {id:"art07",title:"【杜の投資家】決算シーズン速報まとめ",price:0,isPaid:false,likeCount:34,commentCount:2,readCount:900,publishAt:"2026-01-17T18:00:00+09:00"},
-    {id:"art08",title:"【杜のカエル】2025年12月総括",price:0,isPaid:false,likeCount:62,commentCount:7,readCount:2100,publishAt:"2025-12-31T18:00:00+09:00"},
+    {id:"art01",title:"【杜のカエル】最新週次市況まとめ",          price:0,isPaid:false,likeCount:45,commentCount:3, readCount:1240,publishAt:daysAgo(6,19)},
+    {id:"art02",title:"【杜のカエル】先週の週次市況まとめ",          price:0,isPaid:false,likeCount:38,commentCount:2, readCount:1050,publishAt:daysAgo(13,19)},
+    {id:"art03",title:"【杜のカエル】2週前の週次市況まとめ",         price:0,isPaid:false,likeCount:32,commentCount:1, readCount:980, publishAt:daysAgo(20,19)},
+    {id:"art04",title:"【杜のカエル】3週前の週次市況まとめ",         price:0,isPaid:false,likeCount:29,commentCount:2, readCount:870, publishAt:daysAgo(27,19)},
+    {id:"art05",title:"【杜のカエル】先々月の週次市況まとめ",        price:0,isPaid:false,likeCount:41,commentCount:3, readCount:1120,publishAt:daysAgo(41,19)},
+    {id:"art06",title:"【杜の投資家】先月の相場振り返り",            price:0,isPaid:false,likeCount:56,commentCount:5, readCount:1820,publishAt:daysAgo(34,18)},
+    {id:"art07",title:"【杜の投資家】決算シーズン速報まとめ",        price:0,isPaid:false,likeCount:34,commentCount:2, readCount:900, publishAt:daysAgo(48,18)},
+    {id:"art08",title:"【杜のカエル】2ヶ月前月末総括",              price:0,isPaid:false,likeCount:62,commentCount:7, readCount:2100,publishAt:daysAgo(65,18)},
     // Lvシリーズ (8記事)
-    {id:"art09",title:"Lv1→投資初心者がまず知るべき3つのこと",price:200,isPaid:true,likeCount:28,commentCount:4,readCount:640,publishAt:"2025-11-01T10:00:00+09:00"},
-    {id:"art10",title:"Lv2→株の選び方入門：PERとPBRを理解する",price:200,isPaid:true,likeCount:24,commentCount:2,readCount:520,publishAt:"2025-11-15T10:00:00+09:00"},
-    {id:"art11",title:"Lv3→決算書の読み方 完全解説",price:300,isPaid:true,likeCount:31,commentCount:5,readCount:720,publishAt:"2025-12-01T10:00:00+09:00"},
-    {id:"art12",title:"Lv4→ポートフォリオ構築の基本",price:200,isPaid:true,likeCount:19,commentCount:1,readCount:410,publishAt:"2025-12-15T10:00:00+09:00"},
-    {id:"art13",title:"Lv5→テクニカル分析入門",price:300,isPaid:true,likeCount:22,commentCount:2,readCount:480,publishAt:"2026-01-05T10:00:00+09:00"},
-    {id:"art14",title:"🐶初心者でもわかる！ETF完全ガイド",price:200,isPaid:true,likeCount:35,commentCount:6,readCount:890,publishAt:"2026-01-20T10:00:00+09:00"},
-    {id:"art15",title:"Lv0→投資を始める前に知っておくこと（無料）",price:0,isPaid:false,likeCount:89,commentCount:12,readCount:3200,publishAt:"2025-10-15T10:00:00+09:00"},
-    {id:"art32",title:"Lv6→資産運用の応用編〜ファクター投資入門",price:300,isPaid:true,likeCount:17,commentCount:2,readCount:380,publishAt:"2026-02-10T10:00:00+09:00"},
+    {id:"art09",title:"Lv1→投資初心者がまず知るべき3つのこと",    price:200,isPaid:true, likeCount:28,commentCount:4, readCount:640, publishAt:daysAgo(125,10)},
+    {id:"art10",title:"Lv2→株の選び方入門：PERとPBRを理解する",   price:200,isPaid:true, likeCount:24,commentCount:2, readCount:520, publishAt:daysAgo(111,10)},
+    {id:"art11",title:"Lv3→決算書の読み方 完全解説",              price:300,isPaid:true, likeCount:31,commentCount:5, readCount:720, publishAt:daysAgo(95,10)},
+    {id:"art12",title:"Lv4→ポートフォリオ構築の基本",             price:200,isPaid:true, likeCount:19,commentCount:1, readCount:410, publishAt:daysAgo(81,10)},
+    {id:"art13",title:"Lv5→テクニカル分析入門",                   price:300,isPaid:true, likeCount:22,commentCount:2, readCount:480, publishAt:daysAgo(60,10)},
+    {id:"art14",title:"🐶初心者でもわかる！ETF完全ガイド",         price:200,isPaid:true, likeCount:35,commentCount:6, readCount:890, publishAt:daysAgo(45,10)},
+    {id:"art15",title:"Lv0→投資を始める前に知っておくこと（無料）",price:0,  isPaid:false,likeCount:89,commentCount:12,readCount:3200,publishAt:daysAgo(142,10)},
+    {id:"art32",title:"Lv6→資産運用の応用編〜ファクター投資入門",  price:300,isPaid:true, likeCount:17,commentCount:2, readCount:380, publishAt:daysAgo(24,10)},
     // シリーズ物語 (5記事)
-    {id:"art16",title:"🐼パンダと学ぶ投資の世界 第1話",price:0,isPaid:false,likeCount:42,commentCount:8,readCount:1100,publishAt:"2025-09-01T09:00:00+09:00"},
-    {id:"art17",title:"🐭ネズミの積立日記 〜1年間の記録〜",price:0,isPaid:false,likeCount:38,commentCount:5,readCount:950,publishAt:"2025-10-01T09:00:00+09:00"},
-    {id:"art18",title:"🐨コアラの長期投資戦略",price:0,isPaid:false,likeCount:29,commentCount:3,readCount:760,publishAt:"2025-11-01T09:00:00+09:00"},
-    {id:"art19",title:"🐈ねこの高配当株生活 第1章",price:200,isPaid:true,likeCount:18,commentCount:2,readCount:340,publishAt:"2026-01-10T09:00:00+09:00"},
-    {id:"art20",title:"🐘ゾウの時間投資論 第1話",price:0,isPaid:false,likeCount:52,commentCount:9,readCount:1450,publishAt:"2025-12-10T09:00:00+09:00"},
+    {id:"art16",title:"🐼パンダと学ぶ投資の世界 第1話",            price:0,isPaid:false,likeCount:42,commentCount:8,readCount:1100,publishAt:daysAgo(186,9)},
+    {id:"art17",title:"🐭ネズミの積立日記 〜1年間の記録〜",         price:0,isPaid:false,likeCount:38,commentCount:5,readCount:950, publishAt:daysAgo(156,9)},
+    {id:"art18",title:"🐨コアラの長期投資戦略",                    price:0,isPaid:false,likeCount:29,commentCount:3,readCount:760, publishAt:daysAgo(125,9)},
+    {id:"art19",title:"🐈ねこの高配当株生活 第1章",                price:200,isPaid:true, likeCount:18,commentCount:2,readCount:340, publishAt:daysAgo(55,9)},
+    {id:"art20",title:"🐘ゾウの時間投資論 第1話",                  price:0,isPaid:false,likeCount:52,commentCount:9,readCount:1450,publishAt:daysAgo(86,9)},
     // コーヒー (3記事)
-    {id:"art21",title:"☕コーヒー片手に読む 週末投資の時間",price:0,isPaid:false,likeCount:67,commentCount:11,readCount:2300,publishAt:"2025-08-15T08:00:00+09:00"},
-    {id:"art22",title:"コーヒーブレイク投資術〜忙しい人の資産形成〜",price:300,isPaid:true,likeCount:44,commentCount:7,readCount:980,publishAt:"2025-09-20T08:00:00+09:00"},
-    {id:"art23",title:"☕朝のモーニングルーティンと投資チェック",price:0,isPaid:false,likeCount:33,commentCount:4,readCount:820,publishAt:"2025-10-20T08:00:00+09:00"},
+    {id:"art21",title:"☕コーヒー片手に読む 週末投資の時間",        price:0,  isPaid:false,likeCount:67,commentCount:11,readCount:2300,publishAt:daysAgo(203,8)},
+    {id:"art22",title:"コーヒーブレイク投資術〜忙しい人の資産形成〜",price:300,isPaid:true, likeCount:44,commentCount:7, readCount:980, publishAt:daysAgo(167,8)},
+    {id:"art23",title:"☕朝のモーニングルーティンと投資チェック",    price:0,  isPaid:false,likeCount:33,commentCount:4, readCount:820, publishAt:daysAgo(137,8)},
     // その他 (8記事)
-    {id:"art24",title:"MAERAスクリーナーで厳選！今週の注目銘柄",price:300,isPaid:true,likeCount:52,commentCount:8,readCount:1280,publishAt:"2026-02-07T07:00:00+09:00"},
-    {id:"art25",title:"2026年相場展望：AIと半導体を中心に",price:0,isPaid:false,likeCount:78,commentCount:14,readCount:2890,publishAt:"2026-01-02T07:00:00+09:00"},
-    {id:"art26",title:"高配当株 vs 成長株 どちらが正解か？",price:0,isPaid:false,likeCount:65,commentCount:10,readCount:2150,publishAt:"2025-11-20T07:00:00+09:00"},
-    {id:"art27",title:"新NISAで月3万円積立した場合のシミュレーション",price:0,isPaid:false,likeCount:91,commentCount:16,readCount:3450,publishAt:"2025-10-05T07:00:00+09:00"},
-    {id:"art28",title:"インフレ時代の資産防衛術",price:300,isPaid:true,likeCount:41,commentCount:6,readCount:1020,publishAt:"2025-12-20T07:00:00+09:00"},
-    {id:"art29",title:"株クラでバズった投稿の傾向分析",price:0,isPaid:false,likeCount:55,commentCount:9,readCount:1680,publishAt:"2026-01-28T07:00:00+09:00"},
-    {id:"art30",title:"2026年2月 MAERAスクリーナー結果",price:200,isPaid:true,likeCount:38,commentCount:5,readCount:820,publishAt:"2026-02-21T07:00:00+09:00"},
-    {id:"art31",title:"初めてのSBI証券口座開設ガイド",price:0,isPaid:false,likeCount:29,commentCount:3,readCount:1100,publishAt:"2025-09-10T07:00:00+09:00"},
+    {id:"art24",title:"MAERAスクリーナーで厳選！今週の注目銘柄",    price:300,isPaid:true, likeCount:52,commentCount:8, readCount:1280,publishAt:daysAgo(27,7)},
+    {id:"art25",title:"今年の相場展望：AIと半導体を中心に",         price:0,  isPaid:false,likeCount:78,commentCount:14,readCount:2890,publishAt:daysAgo(63,7)},
+    {id:"art26",title:"高配当株 vs 成長株 どちらが正解か？",        price:0,  isPaid:false,likeCount:65,commentCount:10,readCount:2150,publishAt:daysAgo(106,7)},
+    {id:"art27",title:"新NISAで月3万円積立した場合のシミュレーション",price:0, isPaid:false,likeCount:91,commentCount:16,readCount:3450,publishAt:daysAgo(152,7)},
+    {id:"art28",title:"インフレ時代の資産防衛術",                    price:300,isPaid:true, likeCount:41,commentCount:6, readCount:1020,publishAt:daysAgo(76,7)},
+    {id:"art29",title:"株クラでバズった投稿の傾向分析",              price:0,  isPaid:false,likeCount:55,commentCount:9, readCount:1680,publishAt:daysAgo(37,7)},
+    {id:"art30",title:"最新MAERAスクリーナー結果",                  price:200,isPaid:true, likeCount:38,commentCount:5, readCount:820, publishAt:daysAgo(13,7)},
+    {id:"art31",title:"初めてのSBI証券口座開設ガイド",              price:0,  isPaid:false,likeCount:29,commentCount:3, readCount:1100,publishAt:daysAgo(177,7)},
   ].map(a => ({ ...a, url: "#" }));
 
   const purchases = [
-    // March 2026 (3件, ¥700)
-    {content:{key:"art30"},price:200,purchased_at:"2026-03-01T09:30:00+09:00",is_refund:false},
-    {content:{key:"art24"},price:300,purchased_at:"2026-03-01T11:20:00+09:00",is_refund:false},
-    {content:{key:"art30"},price:200,purchased_at:"2026-03-01T14:45:00+09:00",is_refund:false},
-    // February 2026 (20件, ¥5,000)
-    {content:{key:"art09"},price:200,purchased_at:"2026-02-28T10:00:00+09:00",is_refund:false},
-    {content:{key:"art09"},price:200,purchased_at:"2026-02-25T15:30:00+09:00",is_refund:false},
-    {content:{key:"art09"},price:200,purchased_at:"2026-02-20T09:15:00+09:00",is_refund:false},
-    {content:{key:"art09"},price:200,purchased_at:"2026-02-12T18:40:00+09:00",is_refund:false},
-    {content:{key:"art10"},price:200,purchased_at:"2026-02-27T11:00:00+09:00",is_refund:false},
-    {content:{key:"art10"},price:200,purchased_at:"2026-02-18T14:20:00+09:00",is_refund:false},
-    {content:{key:"art11"},price:300,purchased_at:"2026-02-26T10:30:00+09:00",is_refund:false},
-    {content:{key:"art11"},price:300,purchased_at:"2026-02-21T16:00:00+09:00",is_refund:false},
-    {content:{key:"art11"},price:300,purchased_at:"2026-02-10T09:00:00+09:00",is_refund:false},
-    {content:{key:"art12"},price:200,purchased_at:"2026-02-24T12:30:00+09:00",is_refund:false},
-    {content:{key:"art13"},price:300,purchased_at:"2026-02-22T11:20:00+09:00",is_refund:false},
-    {content:{key:"art13"},price:300,purchased_at:"2026-02-15T13:45:00+09:00",is_refund:false},
-    {content:{key:"art14"},price:200,purchased_at:"2026-02-23T10:10:00+09:00",is_refund:false},
-    {content:{key:"art14"},price:200,purchased_at:"2026-02-16T15:00:00+09:00",is_refund:false},
-    {content:{key:"art14"},price:200,purchased_at:"2026-02-08T10:45:00+09:00",is_refund:false},
-    {content:{key:"art22"},price:300,purchased_at:"2026-02-19T14:00:00+09:00",is_refund:false},
-    {content:{key:"art22"},price:300,purchased_at:"2026-02-11T09:30:00+09:00",is_refund:false},
-    {content:{key:"art24"},price:300,purchased_at:"2026-02-17T11:15:00+09:00",is_refund:false},
-    {content:{key:"art24"},price:300,purchased_at:"2026-02-05T16:30:00+09:00",is_refund:false},
-    {content:{key:"art28"},price:300,purchased_at:"2026-02-14T10:00:00+09:00",is_refund:false},
-    // January 2026 (18件, ¥4,400)
-    {content:{key:"art09"},price:200,purchased_at:"2026-01-31T10:00:00+09:00",is_refund:false},
-    {content:{key:"art09"},price:200,purchased_at:"2026-01-26T14:00:00+09:00",is_refund:false},
-    {content:{key:"art09"},price:200,purchased_at:"2026-01-20T09:30:00+09:00",is_refund:false},
-    {content:{key:"art09"},price:200,purchased_at:"2026-01-15T11:00:00+09:00",is_refund:false},
-    {content:{key:"art09"},price:200,purchased_at:"2026-01-08T10:15:00+09:00",is_refund:false},
-    {content:{key:"art10"},price:200,purchased_at:"2026-01-29T15:30:00+09:00",is_refund:false},
-    {content:{key:"art10"},price:200,purchased_at:"2026-01-22T10:00:00+09:00",is_refund:false},
-    {content:{key:"art10"},price:200,purchased_at:"2026-01-14T16:00:00+09:00",is_refund:false},
-    {content:{key:"art11"},price:300,purchased_at:"2026-01-28T09:00:00+09:00",is_refund:false},
-    {content:{key:"art11"},price:300,purchased_at:"2026-01-18T14:30:00+09:00",is_refund:false},
-    {content:{key:"art13"},price:300,purchased_at:"2026-01-27T11:00:00+09:00",is_refund:false},
-    {content:{key:"art13"},price:300,purchased_at:"2026-01-17T10:20:00+09:00",is_refund:false},
-    {content:{key:"art14"},price:200,purchased_at:"2026-01-25T15:00:00+09:00",is_refund:false},
-    {content:{key:"art14"},price:200,purchased_at:"2026-01-10T09:45:00+09:00",is_refund:false},
-    {content:{key:"art22"},price:300,purchased_at:"2026-01-24T13:00:00+09:00",is_refund:false},
-    {content:{key:"art22"},price:300,purchased_at:"2026-01-12T10:30:00+09:00",is_refund:false},
-    {content:{key:"art28"},price:300,purchased_at:"2026-01-23T11:00:00+09:00",is_refund:false},
-    {content:{key:"art28"},price:300,purchased_at:"2026-01-09T14:00:00+09:00",is_refund:false},
-    // December 2025 (8件, ¥1,900)
-    {content:{key:"art09"},price:200,purchased_at:"2025-12-28T10:00:00+09:00",is_refund:false},
-    {content:{key:"art09"},price:200,purchased_at:"2025-12-20T14:00:00+09:00",is_refund:false},
-    {content:{key:"art09"},price:200,purchased_at:"2025-12-12T09:30:00+09:00",is_refund:false},
-    {content:{key:"art11"},price:300,purchased_at:"2025-12-25T11:00:00+09:00",is_refund:false},
-    {content:{key:"art14"},price:200,purchased_at:"2025-12-22T15:00:00+09:00",is_refund:false},
-    {content:{key:"art14"},price:200,purchased_at:"2025-12-10T10:00:00+09:00",is_refund:false},
-    {content:{key:"art22"},price:300,purchased_at:"2025-12-18T14:30:00+09:00",is_refund:false},
-    {content:{key:"art13"},price:300,purchased_at:"2025-12-08T10:15:00+09:00",is_refund:false},
+    // 直近5日（今月）
+    {content:{key:"art30"},price:200,purchased_at:daysAgo(1, 9),is_refund:false},
+    {content:{key:"art24"},price:300,purchased_at:daysAgo(2,11),is_refund:false},
+    {content:{key:"art30"},price:200,purchased_at:daysAgo(3,14),is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:daysAgo(4,10),is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:daysAgo(5,13),is_refund:false},
+    // 先月（6〜30日前）
+    {content:{key:"art09"},price:200,purchased_at:daysAgo( 6,10),is_refund:false},
+    {content:{key:"art10"},price:200,purchased_at:daysAgo( 7,11),is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:daysAgo( 8,10),is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:daysAgo( 9,15),is_refund:false},
+    {content:{key:"art12"},price:200,purchased_at:daysAgo(10,12),is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:daysAgo(11,10),is_refund:false},
+    {content:{key:"art13"},price:300,purchased_at:daysAgo(12,11),is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:daysAgo(13,16),is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:daysAgo(14, 9),is_refund:false},
+    {content:{key:"art22"},price:300,purchased_at:daysAgo(15,14),is_refund:false},
+    {content:{key:"art10"},price:200,purchased_at:daysAgo(16,14),is_refund:false},
+    {content:{key:"art24"},price:300,purchased_at:daysAgo(17,11),is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:daysAgo(18,15),is_refund:false},
+    {content:{key:"art13"},price:300,purchased_at:daysAgo(19,13),is_refund:false},
+    {content:{key:"art28"},price:300,purchased_at:daysAgo(20,10),is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:daysAgo(22,18),is_refund:false},
+    {content:{key:"art22"},price:300,purchased_at:daysAgo(23, 9),is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:daysAgo(24,10),is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:daysAgo(26,10),is_refund:false},
+    {content:{key:"art24"},price:300,purchased_at:daysAgo(29,16),is_refund:false},
+    // 先々月（31〜60日前）
+    {content:{key:"art09"},price:200,purchased_at:daysAgo(34,10),is_refund:false},
+    {content:{key:"art10"},price:200,purchased_at:daysAgo(36,15),is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:daysAgo(37, 9),is_refund:false},
+    {content:{key:"art13"},price:300,purchased_at:daysAgo(38,11),is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:daysAgo(39,14),is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:daysAgo(40,15),is_refund:false},
+    {content:{key:"art22"},price:300,purchased_at:daysAgo(41,13),is_refund:false},
+    {content:{key:"art28"},price:300,purchased_at:daysAgo(42,11),is_refund:false},
+    {content:{key:"art10"},price:200,purchased_at:daysAgo(43,10),is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:daysAgo(45, 9),is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:daysAgo(47,14),is_refund:false},
+    {content:{key:"art13"},price:300,purchased_at:daysAgo(48,10),is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:daysAgo(50,11),is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:daysAgo(51, 9),is_refund:false},
+    {content:{key:"art22"},price:300,purchased_at:daysAgo(53,10),is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:daysAgo(55, 9),is_refund:false},
+    {content:{key:"art28"},price:300,purchased_at:daysAgo(56,14),is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:daysAgo(57,10),is_refund:false},
+    // 3〜6ヶ月前（週別グラフに表示）
+    {content:{key:"art09"},price:200,purchased_at:daysAgo(68,10),is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:daysAgo(71,11),is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:daysAgo(74,15),is_refund:false},
+    {content:{key:"art22"},price:300,purchased_at:daysAgo(76,14),is_refund:false},
+    {content:{key:"art22"},price:300,purchased_at:daysAgo(78, 9),is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:daysAgo(84,10),is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:daysAgo(86,10),is_refund:false},
+    {content:{key:"art13"},price:300,purchased_at:daysAgo(88,10),is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:daysAgo(95,11),is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:daysAgo(102,10),is_refund:false},
+    {content:{key:"art28"},price:300,purchased_at:daysAgo(110,14),is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:daysAgo(118,10),is_refund:false},
+    {content:{key:"art13"},price:300,purchased_at:daysAgo(125, 9),is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:daysAgo(132,10),is_refund:false},
+    {content:{key:"art22"},price:300,purchased_at:daysAgo(140,11),is_refund:false},
+    {content:{key:"art11"},price:300,purchased_at:daysAgo(147,10),is_refund:false},
+    {content:{key:"art10"},price:200,purchased_at:daysAgo(155,15),is_refund:false},
+    {content:{key:"art14"},price:200,purchased_at:daysAgo(162,10),is_refund:false},
+    {content:{key:"art09"},price:200,purchased_at:daysAgo(170,10),is_refund:false},
+    {content:{key:"art13"},price:300,purchased_at:daysAgo(177, 9),is_refund:false},
   ];
 
-  // 記事別集計 (details: Dec+Jan+Feb)
+  // 記事別集計（直近3ヶ月）
+  const threeMonthsAgo = new Date(_now.getFullYear(), _now.getMonth() - 3, _now.getDate());
   const detailMap = {};
   for (const p of purchases) {
     if (p.is_refund) continue;
     const d = new Date(p.purchased_at);
-    if (d.getFullYear() === 2025 && d.getMonth() < 11) continue; // Dec以前は除外
-    if (d.getFullYear() === 2026 && d.getMonth() > 1) continue;  // Mar以降は除外
+    if (d < threeMonthsAgo) continue;
     const key = p.content?.key ?? "";
     if (!key) continue;
     if (!detailMap[key]) detailMap[key] = { key, count: 0, sales: 0 };
@@ -651,21 +672,22 @@ const DEMO_DATA = (function() {
   }
   const details = Object.values(detailMap);
 
+  // 月別サマリー（purchasesから動的生成）
+  const summaryMap = {};
+  for (const p of purchases) {
+    if (p.is_refund) continue;
+    const d = new Date(p.purchased_at);
+    const k = `${d.getFullYear()}-${d.getMonth()+1}`;
+    if (!summaryMap[k]) summaryMap[k] = { year: d.getFullYear(), month: d.getMonth()+1, amount: 0, count: 0 };
+    summaryMap[k].amount += p.price ?? 0;
+    summaryMap[k].count++;
+  }
+  const sales_histories = Object.values(summaryMap).sort((a,b) => b.year-a.year || b.month-a.month);
+
   return {
     articles,
     creator: { followerCount: 633, followingCount: 182, nickname: "brainy_quince872" },
-    sales: {
-      summary: {
-        sales_histories: [
-          { year: 2026, month: 3, amount: 700,  count: 3  },
-          { year: 2026, month: 2, amount: 5000, count: 20 },
-          { year: 2026, month: 1, amount: 4400, count: 18 },
-          { year: 2025, month: 12, amount: 1900, count: 8 },
-        ],
-      },
-      details,
-      purchases,
-    },
+    sales: { summary: { sales_histories }, details, purchases },
     updatedAt: Date.now(),
     hasViews: true,
   };
