@@ -1029,7 +1029,13 @@ function updateCharts() {
     ]},
     options:{ responsive:true, maintainAspectRatio:false,
       interaction:{ mode:"index", intersect:false },
-      plugins:{ legend:{ labels:{ boxWidth:12, padding:12 }}},
+      plugins:{ legend:{ labels:{ boxWidth:12, padding:12 }},
+               tooltip:{ callbacks:{ label: ctx => {
+                 const v = ctx.parsed.y;
+                 return ctx.dataset.yAxisID === "y2"
+                   ? `ENG率: ${v != null ? v.toFixed(2) + "%" : "-"}`
+                   : `閲覧数(PV): ${v != null ? Math.round(v).toLocaleString() : "-"}`;
+               }}}},
       scales:{
         x:{ ticks:{ color:"#9ca3af", maxTicksLimit:tickLimit }, grid:{ display:false }},
         y:{ ticks:{ color:"#6366f1" }, grid:{ color:"#f3f4f6" }, position:"left",
