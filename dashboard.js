@@ -584,7 +584,7 @@ function updateCharts() {
         y:{ ticks:{ color:"#6366f1" }, grid:{ color:"#f3f4f6" }, position:"left",
             title:{ display:true, text:"閲覧数", color:"#6366f1", font:{size:9}}},
         y2:{ ticks:{ color:"#f59e0b",
-               callback: v => v != null ? v + "%" : "" },
+               callback: v => v != null ? parseFloat(v.toFixed(2)) + "%" : "" },
              grid:{ display:false }, position:"right",
              title:{ display:true, text:"ENG率", color:"#f59e0b", font:{size:9}}},
       },

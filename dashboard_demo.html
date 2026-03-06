@@ -1034,7 +1034,7 @@ function updateCharts() {
         x:{ ticks:{ color:"#9ca3af", maxTicksLimit:tickLimit }, grid:{ display:false }},
         y:{ ticks:{ color:"#6366f1" }, grid:{ color:"#f3f4f6" }, position:"left",
             title:{ display:true, text:"閲覧数", color:"#6366f1", font:{size:9}}},
-        y2:{ ticks:{ color:"#f59e0b", callback: v => v != null ? v + "%" : "" }, grid:{ display:false }, position:"right",
+        y2:{ ticks:{ color:"#f59e0b", callback: v => v != null ? parseFloat(v.toFixed(2)) + "%" : "" }, grid:{ display:false }, position:"right",
              title:{ display:true, text:"ENG率", color:"#f59e0b", font:{size:9}}},
       },
     },
