@@ -166,6 +166,26 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
 
 /* ── Footer ──────────────────────────────────────────── */
 .footer{text-align:center;padding:16px;font-size:0.7rem;color:#d1d5db;border-top:1px solid #f3f4f6;background:#fff}
+
+/* ── Article Modal ───────────────────────────────────── */
+.art-modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,.55);z-index:1000;align-items:center;justify-content:center}
+.art-modal-overlay.open{display:flex}
+.art-modal-box{background:#fff;border-radius:18px;width:min(92vw,780px);max-height:85vh;overflow-y:auto;padding:28px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.art-modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:#9ca3af;line-height:1;padding:4px 8px;border-radius:6px;transition:background .15s}
+.art-modal-close:hover{background:#f3f4f6;color:#374151}
+.art-modal-title{font-size:0.95rem;font-weight:700;color:#111827;margin-bottom:10px;padding-right:36px;line-height:1.45}
+.art-modal-meta{display:flex;flex-wrap:wrap;gap:14px;font-size:0.75rem;color:#6b7280;margin-bottom:20px;padding:10px 14px;background:#f9fafb;border-radius:10px;border:1px solid #f0f0f4}
+.art-modal-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.art-modal-kpi{background:#f8f7ff;border-radius:10px;padding:12px 14px;text-align:center;border:1px solid #ede9fe}
+.art-modal-kpi-label{font-size:0.67rem;color:#9ca3af;margin-bottom:4px}
+.art-modal-kpi-val{font-size:1.4rem;font-weight:800;color:#4f46e5;line-height:1}
+.art-modal-kpi-sub{font-size:0.65rem;color:#a5b4fc;margin-top:3px}
+.art-modal-section{font-size:0.8rem;font-weight:700;color:#374151;margin-bottom:10px}
+.art-modal-nodata{text-align:center;padding:40px;color:#9ca3af;font-size:0.85rem}
+#tableBody tr{cursor:pointer;transition:background .1s}
+#tableBody tr:hover td{background:#f5f3ff !important}
+.top-item{cursor:pointer;transition:background .12s;border-radius:8px;margin:0 -6px;padding-left:6px;padding-right:6px}
+.top-item:hover{background:#f5f3ff}
 </style>
 </head>
 <body>
@@ -179,7 +199,7 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
       <path d="M11 27V15h4.2l7.6 8.4V15H27v12h-4.2L15.2 18.6V27H11z" fill="#fff"/>
     </svg>
     Maa <span class="accent">Note</span> Analysis
-    <span style="font-size:0.62rem;font-weight:400;color:#9ca3af;margin-left:2px">Ver.1</span>
+    <span style="font-size:0.62rem;font-weight:400;color:#9ca3af;margin-left:2px">Ver.2</span>
   </div>
   <div class="header-right">
     <span id="updatedAt"></span>
@@ -205,17 +225,17 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
       </div>
       <div class="sales-kpi-row">
         <div class="sales-kpi">
-          <div class="sales-kpi-label">今月の売上</div>
+          <div class="sales-kpi-label" id="sSalesLabel">今月の売上</div>
           <div class="sales-kpi-value large" id="sCurrentSales">—</div>
           <div class="sales-kpi-sub neutral" id="sCurrentSalesSub"></div>
         </div>
         <div class="sales-kpi">
-          <div class="sales-kpi-label">先月比</div>
+          <div class="sales-kpi-label" id="sMoMLabel">先月比</div>
           <div class="sales-kpi-value" id="sMoM">—</div>
           <div class="sales-kpi-sub neutral" id="sMoMSub"></div>
         </div>
         <div class="sales-kpi">
-          <div class="sales-kpi-label">今月の購入件数</div>
+          <div class="sales-kpi-label" id="sPurchaseLabel">今月の購入件数</div>
           <div class="sales-kpi-value" id="sPurchaseCount">—</div>
           <div class="sales-kpi-sub neutral" id="sPurchaseSub"></div>
         </div>
@@ -441,7 +461,13 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
     </div>
 
     <div class="section-hd">
-      <div class="section-title">🏆 いいね TOP 10</div>
+      <div class="section-title">🏆 TOP 10</div>
+      <div class="paid-sort-group">
+        <button class="paid-sort-btn" data-top10sort="readCount">閲覧数</button>
+        <button class="paid-sort-btn active" data-top10sort="likeCount">いいね</button>
+        <button class="paid-sort-btn" data-top10sort="commentCount">コメント</button>
+        <button class="paid-sort-btn" data-top10sort="eng">ENG率</button>
+      </div>
     </div>
     <div class="top-list" id="top10"></div>
 
@@ -458,6 +484,8 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
       <button class="f-btn c-story"  data-cat="シリーズ物語">シリーズ物語</button>
       <button class="f-btn c-coffee" data-cat="コーヒー">コーヒー</button>
       <button class="f-btn c-other"  data-cat="その他">その他</button>
+      <button class="f-btn" data-paid="paid" style="border-color:#f59e0b;color:#92400e">💎 有料のみ</button>
+      <button class="f-btn" data-paid="free" style="border-color:#10b981;color:#065f46">🆓 無料のみ</button>
       <div class="search-wrap">
         <input type="text" id="searchInput" class="search-input" placeholder="記事名で検索...">
       </div>
@@ -466,12 +494,14 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
 
     <div class="table-card" style="margin-bottom:28px">
       <table class="tbl">
-        <thead>
+        <thead id="articlesTableHead">
           <tr>
             <th class="col-r">#</th><th>タイトル</th><th>カテゴリ</th>
             <th>投稿日時</th><th>種別</th>
-            <th class="col-r">閲覧数</th><th class="col-r">いいね</th>
-            <th class="col-r">コメント</th><th class="col-r">エンゲージメント</th>
+            <th class="col-r" data-sort="readCount" data-label="閲覧数" style="cursor:pointer;user-select:none">閲覧数 ↕</th>
+            <th class="col-r" data-sort="likeCount" data-label="いいね" style="cursor:pointer;user-select:none">いいね ↕</th>
+            <th class="col-r" data-sort="commentCount" data-label="コメント" style="cursor:pointer;user-select:none">コメント ↕</th>
+            <th class="col-r" data-sort="eng" data-label="エンゲージメント" style="cursor:pointer;user-select:none">エンゲージメント ↕</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -483,6 +513,21 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
 </div><!-- /mainContent -->
 
 <footer class="footer" id="footerText">Maa Note Analysis – DEMO</footer>
+
+<!-- ── 記事詳細モーダル ── -->
+<div class="art-modal-overlay" id="articleModal">
+  <div class="art-modal-box">
+    <button class="art-modal-close" id="modalClose">✕</button>
+    <div class="art-modal-title" id="modalTitle"></div>
+    <div class="art-modal-meta" id="modalMeta"></div>
+    <div class="art-modal-kpi-row" id="modalKpiRow"></div>
+    <div class="art-modal-section" id="modalChartLabel" style="display:none">📈 購入推移（投稿日〜現在）</div>
+    <div style="height:240px;position:relative" id="modalChartWrap">
+      <canvas id="modalChart"></canvas>
+    </div>
+    <div class="art-modal-nodata" id="modalNoData" style="display:none">購入データがありません（無料記事 or 購入履歴なし）</div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
@@ -505,9 +550,13 @@ const MEDALS = ["🥇","🥈","🥉"];
 
 // ─── 状態 ───────────────────────────────────────────────────
 let currentCat      = "all";
+let currentPaidFilter = "all";
 let chartGran       = "day";
 let paidSortKey     = "sales";
 let salesGranularity = "month";
+let top10SortKey    = "likeCount";
+let tableSortKey    = null;
+let tableSortDir    = "desc";
 let allArticles     = [];
 let currentData     = null;
 const charts        = {};
@@ -1238,13 +1287,54 @@ function renderCategoryBubble(arts) {
   });
 }
 
+// ─── テーブルソートヘルパー ──────────────────────────────────
+function getSortValue(a, key) {
+  if (key === "readCount")    return a.readCount    ?? -1;
+  if (key === "likeCount")    return a.likeCount    ?? 0;
+  if (key === "commentCount") return a.commentCount ?? 0;
+  if (key === "eng") return a.readCount > 0 ? (a.likeCount + a.commentCount) / a.readCount : -1;
+  return 0;
+}
+
+function updateTableSortHeaders() {
+  document.querySelectorAll("#articlesTableHead th[data-sort]").forEach(th => {
+    const label = th.dataset.label;
+    if (th.dataset.sort === tableSortKey) {
+      th.textContent = `${label} ${tableSortDir === "asc" ? "↑" : "↓"}`;
+      th.style.color = "#6366f1";
+    } else {
+      th.textContent = `${label} ↕`;
+      th.style.color = "";
+    }
+  });
+}
+
+function setTableSort(key) {
+  if (tableSortKey === key) {
+    tableSortDir = tableSortDir === "desc" ? "asc" : "desc";
+  } else {
+    tableSortKey = key;
+    tableSortDir = "desc";
+  }
+  updateTableSortHeaders();
+  renderTable();
+}
+
 // ─── 全記事テーブル ───────────────────────────────────────────
 function renderTable() {
-  document.getElementById("tableBody").innerHTML = allArticles.map((a, i) => {
+  let sorted = [...allArticles];
+  if (tableSortKey) {
+    sorted.sort((a, b) => {
+      const va = getSortValue(a, tableSortKey);
+      const vb = getSortValue(b, tableSortKey);
+      return tableSortDir === "asc" ? va - vb : vb - va;
+    });
+  }
+  document.getElementById("tableBody").innerHTML = sorted.map((a, i) => {
     const catCls = CAT_BG[a.category] ?? "c-other";
     const paid   = a.isPaid ? '<span class="badge b-paid">有料</span>' : '<span class="badge b-free">無料</span>';
     const artEng = (a.readCount > 0) ? pct(((a.likeCount + a.commentCount) / a.readCount) * 100) : "—";
-    return `<tr data-cat="${a.category}" data-title="${a.title.toLowerCase()}">
+    return `<tr data-cat="${a.category}" data-title="${a.title.toLowerCase()}" data-paid="${a.isPaid ? 1 : 0}" data-artid="${a.id}" title="クリックで詳細を表示">
       <td class="col-sm col-r" style="color:#9ca3af">${i+1}</td>
       <td><a href="${a.url}" class="art-link">${a.title.slice(0,56)}${a.title.length>56?"…":""}</a></td>
       <td><span class="cat-badge ${catCls}">${a.category}</span></td>
@@ -1263,13 +1353,295 @@ function applyFilter() {
   const q = (document.getElementById("searchInput")?.value ?? "").toLowerCase();
   let visible = 0;
   document.querySelectorAll("#tableBody tr").forEach(row => {
+    const paidMatch = currentPaidFilter === "all"
+      || (currentPaidFilter === "paid" && row.dataset.paid === "1")
+      || (currentPaidFilter === "free" && row.dataset.paid === "0");
     const show = (!q || (row.dataset.title ?? "").includes(q))
-               && (currentCat === "all" || row.dataset.cat === currentCat);
+               && (currentCat === "all" || row.dataset.cat === currentCat)
+               && paidMatch;
     row.style.display = show ? "" : "none";
     if (show) visible++;
   });
   const info = document.getElementById("tblInfo");
   if (info) info.textContent = `表示中: ${visible} / ${allArticles.length} 件`;
+}
+
+// ─── 記事詳細モーダル ────────────────────────────────────────
+function renderArticleModal(articleId) {
+  const article = allArticles.find(a => a.id === articleId);
+  if (!article) return;
+
+  // この記事の購入履歴を取得
+  const artPurchases = (currentData?.sales?.purchases ?? [])
+    .filter(p => !p.is_refund && p.content?.key === articleId)
+    .sort((a, b) => new Date(a.purchased_at) - new Date(b.purchased_at));
+
+  const totalCount  = artPurchases.length;
+  const totalSales  = artPurchases.reduce((s, p) => s + (p.price ?? 0), 0);
+  const artEng      = article.readCount > 0
+    ? ((article.likeCount + article.commentCount) / article.readCount * 100).toFixed(2) + "%"
+    : "—";
+
+  // タイトル・メタ
+  document.getElementById("modalTitle").textContent = article.title;
+  document.getElementById("modalMeta").innerHTML = [
+    `📅 ${article.dateStr}`,
+    `👁 閲覧数 ${fmt(article.readCount)}`,
+    `♥ いいね ${fmt(article.likeCount)}`,
+    `💬 コメント ${article.commentCount}`,
+    `📊 ENG率 ${artEng}`,
+    article.isPaid ? `<span style="color:#059669;font-weight:700">💰 ${fmtYen(article.isPaid ? article.price || 0 : 0)} 記事</span>` : `<span style="color:#10b981">🆓 無料記事</span>`,
+  ].map(s => `<span>${s}</span>`).join("");
+
+  // KPIカード
+  const daysOnSale = article.isPaid && totalCount > 0
+    ? Math.max(1, Math.round((Date.now() - new Date(artPurchases[0].purchased_at)) / 86400000))
+    : null;
+  document.getElementById("modalKpiRow").innerHTML = article.isPaid ? `
+    <div class="art-modal-kpi">
+      <div class="art-modal-kpi-label">累計売上</div>
+      <div class="art-modal-kpi-val">${fmtYen(totalSales)}</div>
+      <div class="art-modal-kpi-sub">${totalCount}件購入</div>
+    </div>
+    <div class="art-modal-kpi">
+      <div class="art-modal-kpi-label">購入率</div>
+      <div class="art-modal-kpi-val">${article.readCount > 0 && totalCount > 0 ? (totalCount / article.readCount * 100).toFixed(2) + "%" : "—"}</div>
+      <div class="art-modal-kpi-sub">閲覧→購入</div>
+    </div>
+    <div class="art-modal-kpi">
+      <div class="art-modal-kpi-label">週平均販売</div>
+      <div class="art-modal-kpi-val">${daysOnSale ? (totalCount / daysOnSale * 7).toFixed(1) : "—"}</div>
+      <div class="art-modal-kpi-sub">件/週</div>
+    </div>` : `<div style="grid-column:1/-1;text-align:center;color:#9ca3af;font-size:.8rem;padding:8px">無料記事のため販売データなし</div>`;
+
+  // チャートデータ作成（投稿日〜今日）
+  if (totalCount === 0) {
+    document.getElementById("modalChartWrap").style.display = "none";
+    document.getElementById("modalChartLabel").style.display = "none";
+    document.getElementById("modalNoData").style.display = "block";
+  } else {
+    document.getElementById("modalChartWrap").style.display = "block";
+    document.getElementById("modalChartLabel").style.display = "block";
+    document.getElementById("modalNoData").style.display = "none";
+
+    // 投稿日から今日まで全日付を埋める
+    const map = {};
+    const startDate = new Date(article.publishAt); startDate.setHours(0,0,0,0);
+    const endDate   = new Date(); endDate.setHours(0,0,0,0);
+    const cur = new Date(startDate);
+    while (cur <= endDate) {
+      const k = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,"0")}-${String(cur.getDate()).padStart(2,"0")}`;
+      map[k] = { count: 0, amount: 0 };
+      cur.setDate(cur.getDate() + 1);
+    }
+    for (const p of artPurchases) {
+      const d = new Date(p.purchased_at);
+      const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      if (map[k]) { map[k].count++; map[k].amount += p.price ?? 0; }
+    }
+
+    const labels  = Object.keys(map).sort();
+    const counts  = labels.map(k => map[k].count);
+    const amounts = labels.map(k => map[k].amount);
+    let cC = 0, cA = 0;
+    const cumCounts  = counts.map(v  => (cC += v));
+    const cumAmounts = amounts.map(v => (cA += v));
+
+    if (charts["modalChart"]) charts["modalChart"].destroy();
+    charts["modalChart"] = new Chart(
+      document.getElementById("modalChart").getContext("2d"), {
+      data: { labels, datasets: [
+        { type:"bar",  label:"期間別購入数", data:counts,
+          backgroundColor:"rgba(99,102,241,.50)", borderRadius:4, yAxisID:"y",  order:2 },
+        { type:"line", label:"累積購入数",   data:cumCounts,
+          borderColor:"#6366f1", backgroundColor:"rgba(99,102,241,.06)",
+          tension:.3, fill:true, pointRadius:2, borderWidth:2, yAxisID:"y2", order:1 },
+        { type:"line", label:"累積売上(¥)", data:cumAmounts,
+          borderColor:"#10b981", backgroundColor:"transparent",
+          tension:.3, fill:false, pointRadius:2, borderWidth:2, yAxisID:"y3", order:1 },
+      ]},
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:"index", intersect:false },
+        plugins:{ legend:{ labels:{ boxWidth:12, padding:12 }},
+          tooltip:{ callbacks:{ label(ctx) {
+            if (ctx.dataset.yAxisID === "y3") return `累積売上: ¥${ctx.parsed.y.toLocaleString()}`;
+            if (ctx.dataset.yAxisID === "y2") return `累積件数: ${ctx.parsed.y}件`;
+            return `期間購入: ${ctx.parsed.y}件`;
+          }}}},
+        scales:{
+          x:{ ticks:{ color:"#9ca3af", maxTicksLimit:12 }, grid:{ display:false }},
+          y:{ position:"left",  ticks:{ color:"#6366f1", precision:0, stepSize:1 },
+              grid:{ color:"#f3f4f6" },
+              title:{ display:true, text:"期間別", color:"#6366f1", font:{size:9}}},
+          y2:{ position:"right", ticks:{ color:"#8b5cf6", precision:0 }, grid:{ display:false },
+               title:{ display:true, text:"累積件数", color:"#8b5cf6", font:{size:9}}},
+          y3:{ position:"right", display:false,
+               ticks:{ color:"#10b981", callback: v => `¥${v.toLocaleString()}` }},
+        },
+      },
+    });
+  }
+
+  document.getElementById("articleModal").classList.add("open");
+}
+
+// ─── TOP10 レンダリング ───────────────────────────────────────
+function renderTop10() {
+  function engVal(a) {
+    return a.readCount > 0 ? (a.likeCount + a.commentCount) / a.readCount : -1;
+  }
+  const top10 = [...allArticles].sort((a, b) => {
+    if (top10SortKey === "readCount")    return (b.readCount    ?? 0)  - (a.readCount    ?? 0);
+    if (top10SortKey === "commentCount") return (b.commentCount ?? 0)  - (a.commentCount ?? 0);
+    if (top10SortKey === "eng")          return engVal(b) - engVal(a);
+    return (b.likeCount ?? 0) - (a.likeCount ?? 0); // default: likeCount
+  }).slice(0, 10);
+
+  document.getElementById("top10").innerHTML = top10.map((a, i) => `
+    <div class="top-item" data-artid="${a.id}" title="クリックで詳細を表示">
+      <div class="top-rank">${MEDALS[i] ?? `<span style="font-size:.8rem">${i+1}</span>`}</div>
+      <div class="top-info">
+        <span class="top-title-link" style="color:#1d4ed8;font-size:0.82rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.title.slice(0,65)}${a.title.length>65?"…":""}</span>
+        <div class="top-meta">${a.dateStr} · ${a.category}</div>
+      </div>
+      <div class="top-nums">
+        <span class="n-view">👁 ${fmt(a.readCount)}</span>
+        <span class="n-like">♥ ${fmt(a.likeCount)}</span>
+        <span class="n-cmt">💬 ${a.commentCount}</span>
+      </div>
+    </div>`).join("");
+}
+
+// ─── KPIデルタ（日/週/月の前期比） ───────────────────────────
+function computePeriodDelta(gran) {
+  const now   = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  let curFrom, curTo, prevFrom, prevTo;
+  if (gran === "day") {
+    curFrom  = today;
+    curTo    = new Date(today.getTime() + 86400000);
+    prevFrom = new Date(today.getTime() - 86400000);
+    prevTo   = today;
+  } else if (gran === "week") {
+    const dow    = today.getDay() || 7;
+    const monThis = new Date(today); monThis.setDate(today.getDate() - dow + 1);
+    const monPrev = new Date(monThis); monPrev.setDate(monThis.getDate() - 7);
+    curFrom  = monThis;
+    curTo    = new Date(monThis.getTime() + 7 * 86400000);
+    prevFrom = monPrev;
+    prevTo   = monThis;
+  } else {
+    curFrom  = new Date(now.getFullYear(), now.getMonth(), 1);
+    curTo    = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    prevFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    prevTo   = curFrom;
+  }
+
+  function statsInRange(from, to) {
+    const arts = allArticles.filter(a => {
+      const d = a.dateObj; return d >= from && d < to;
+    });
+    return {
+      views:    arts.reduce((s, a) => s + Math.max(a.readCount ?? 0, 0), 0),
+      likes:    arts.reduce((s, a) => s + (a.likeCount    ?? 0), 0),
+      comments: arts.reduce((s, a) => s + (a.commentCount ?? 0), 0),
+    };
+  }
+  return { cur: statsInRange(curFrom, curTo), prev: statsInRange(prevFrom, prevTo) };
+}
+
+function deltaBadge(cur, prev) {
+  if (prev === 0 && cur === 0) return '<span style="color:#9ca3af;font-size:.68rem">変化なし</span>';
+  if (prev === 0) return `<span style="color:#34d399;font-size:.68rem">NEW +${cur}</span>`;
+  const pct  = ((cur - prev) / prev * 100).toFixed(1);
+  const sign = cur >= prev ? "+" : "";
+  const col  = cur >= prev ? "#34d399" : "#f87171";
+  return `<span style="color:${col};font-size:.68rem">${sign}${pct}% 前期比</span>`;
+}
+
+function updateKPIDeltas(gran) {
+  if (gran === "all") {
+    document.getElementById("kViewsSub").textContent    = `${allArticles.length}件取得済み`;
+    document.getElementById("kLikesSub").textContent    = `平均 ${allArticles.length ? (allArticles.reduce((s,a)=>s+(a.likeCount??0),0)/allArticles.length).toFixed(1) : 0} / 記事`;
+    document.getElementById("kCommentsSub").textContent = `平均 ${allArticles.length ? (allArticles.reduce((s,a)=>s+(a.commentCount??0),0)/allArticles.length).toFixed(1) : 0} / 記事`;
+    return;
+  }
+  const { cur, prev } = computePeriodDelta(gran);
+  document.getElementById("kViewsSub").innerHTML    = deltaBadge(cur.views,    prev.views);
+  document.getElementById("kLikesSub").innerHTML    = deltaBadge(cur.likes,    prev.likes);
+  document.getElementById("kCommentsSub").innerHTML = deltaBadge(cur.comments, prev.comments);
+}
+
+// ─── 売上KPIの粒度連動 ────────────────────────────────────────
+function renderSalesKPIsByGran(sales, gran) {
+  const purchases = sales?.purchases ?? [];
+  const now = new Date();
+
+  function sumInRange(from, to) {
+    const ps = purchases.filter(p => {
+      if (p.is_refund) return false;
+      const d = new Date(p.purchased_at);
+      return !isNaN(d) && d >= from && d < to;
+    });
+    return { amount: ps.reduce((s,p) => s+(p.price??0), 0), count: ps.length };
+  }
+
+  let curFrom, curTo, prevFrom, prevTo, curLabel, prevLabel;
+  if (gran === "day") {
+    const today  = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    curFrom  = today;
+    curTo    = new Date(today.getTime() + 86400000);
+    prevFrom = new Date(today.getTime() - 86400000);
+    prevTo   = today;
+    curLabel  = "本日";
+    prevLabel = "前日";
+  } else if (gran === "week") {
+    const dow    = (now.getDay() || 7);
+    const monThis = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow + 1);
+    const monPrev = new Date(monThis); monPrev.setDate(monThis.getDate() - 7);
+    curFrom  = monThis;
+    curTo    = new Date(monThis.getTime() + 7 * 86400000);
+    prevFrom = monPrev;
+    prevTo   = monThis;
+    curLabel  = "今週";
+    prevLabel = "先週";
+  } else {
+    const thisYear = now.getFullYear(), thisMonth = now.getMonth();
+    curFrom  = new Date(thisYear, thisMonth, 1);
+    curTo    = new Date(thisYear, thisMonth + 1, 1);
+    prevFrom = new Date(thisYear, thisMonth - 1, 1);
+    prevTo   = curFrom;
+    curLabel  = "今月";
+    prevLabel = "先月";
+  }
+
+  const cur  = sumInRange(curFrom, curTo);
+  const prev = sumInRange(prevFrom, prevTo);
+  const diff = cur.amount - prev.amount;
+  const momSign = diff >= 0 ? "+" : "";
+
+  document.getElementById("sSalesLabel").textContent    = `${curLabel}の売上`;
+  document.getElementById("sMoMLabel").textContent      = `${prevLabel}比`;
+  document.getElementById("sPurchaseLabel").textContent = `${curLabel}の購入件数`;
+
+  document.getElementById("sCurrentSales").textContent    = fmtYen(cur.amount);
+  document.getElementById("sCurrentSalesSub").textContent = `${curLabel}実績`;
+
+  if (prev.amount > 0) {
+    const rate = (diff / prev.amount * 100).toFixed(1);
+    document.getElementById("sMoM").textContent    = `${momSign}${rate}%`;
+    document.getElementById("sMoMSub").textContent = `${prevLabel} ${fmtYen(prev.amount)}`;
+    document.getElementById("sMoMSub").className   = `sales-kpi-sub ${diff >= 0 ? "up" : "down"}`;
+  } else {
+    document.getElementById("sMoM").textContent    = cur.amount > 0 ? "NEW" : "—";
+    document.getElementById("sMoMSub").textContent = `${prevLabel}データなし`;
+  }
+
+  document.getElementById("sPurchaseCount").textContent = `${cur.count}件`;
+  document.getElementById("sPurchaseSub").textContent   = cur.count > 0 && cur.amount > 0
+    ? `平均 ${fmtYen(Math.round(cur.amount / cur.count))}/件` : "";
 }
 
 // ─── タブ切り替え ─────────────────────────────────────────────
@@ -1434,22 +1806,10 @@ function render(data) {
   renderArticleBubble(allArticles, data.sales ?? null);
   renderCategoryBubble(allArticles);
 
-  const top10 = [...arts].sort((a, b) => b.likeCount - a.likeCount).slice(0, 10);
-  document.getElementById("top10").innerHTML = top10.map((a, i) => `
-    <div class="top-item">
-      <div class="top-rank">${MEDALS[i] ?? `<span style="font-size:.8rem">${i+1}</span>`}</div>
-      <div class="top-info">
-        <a href="${a.url}" class="top-title-link">${a.title.slice(0,65)}${a.title.length>65?"…":""}</a>
-        <div class="top-meta">${a.dateStr} · ${a.category}</div>
-      </div>
-      <div class="top-nums">
-        <span class="n-view">👁 ${fmt(a.readCount)}</span>
-        <span class="n-like">♥ ${fmt(a.likeCount)}</span>
-        <span class="n-cmt">💬 ${a.commentCount}</span>
-      </div>
-    </div>`).join("");
-
+  renderTop10();
   renderTable();
+  renderSalesKPIsByGran(data.sales ?? null, salesGranularity);
+  updateKPIDeltas(chartGran);
 
   document.getElementById("footerText").textContent =
     `Maa Note Analysis DEMO — ${total}記事 · いいね ${totalLikes.toLocaleString()}`;
@@ -1469,6 +1829,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll(".sgran-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       updateSalesCharts();
+      renderSalesKPIsByGran(currentData?.sales ?? null, salesGranularity);
     });
   });
 
@@ -1478,6 +1839,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll(".period-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       updateCharts();
+      updateKPIDeltas(chartGran);
     });
   });
 
@@ -1493,14 +1855,61 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".f-btn[data-cat]").forEach(btn => {
     btn.addEventListener("click", () => {
       currentCat = btn.dataset.cat;
-      document.querySelectorAll(".f-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".f-btn[data-cat]").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       applyFilter();
     });
   });
 
+  document.querySelectorAll(".f-btn[data-paid]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentPaidFilter = btn.dataset.paid === currentPaidFilter ? "all" : btn.dataset.paid;
+      document.querySelectorAll(".f-btn[data-paid]").forEach(b => b.classList.remove("active"));
+      if (currentPaidFilter !== "all") btn.classList.add("active");
+      applyFilter();
+    });
+  });
+
+  document.querySelectorAll("[data-top10sort]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      top10SortKey = btn.dataset.top10sort;
+      document.querySelectorAll("[data-top10sort]").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderTop10();
+    });
+  });
+
+  document.querySelectorAll("#articlesTableHead th[data-sort]").forEach(th => {
+    th.addEventListener("click", () => setTableSort(th.dataset.sort));
+  });
+
   document.getElementById("searchInput")?.addEventListener("input", applyFilter);
   document.getElementById("csvBtn").addEventListener("click", exportCSV);
+
+  // 記事詳細モーダル：テーブル行クリック（イベント委譲）
+  document.getElementById("tableBody").addEventListener("click", e => {
+    const row = e.target.closest("tr[data-artid]");
+    if (row) renderArticleModal(row.dataset.artid);
+  });
+
+  // 記事詳細モーダル：TOP10クリック（イベント委譲）
+  document.getElementById("top10").addEventListener("click", e => {
+    const item = e.target.closest("[data-artid]");
+    if (item) renderArticleModal(item.dataset.artid);
+  });
+
+  // モーダルを閉じる
+  document.getElementById("modalClose").addEventListener("click", () => {
+    document.getElementById("articleModal").classList.remove("open");
+  });
+  document.getElementById("articleModal").addEventListener("click", e => {
+    if (e.target === document.getElementById("articleModal")) {
+      document.getElementById("articleModal").classList.remove("open");
+    }
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") document.getElementById("articleModal").classList.remove("open");
+  });
 });
 </script>
 </body>

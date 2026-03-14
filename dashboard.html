@@ -238,17 +238,17 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
       </div>
       <div class="sales-kpi-row">
         <div class="sales-kpi">
-          <div class="sales-kpi-label">今月の売上</div>
+          <div class="sales-kpi-label" id="sSalesLabel">今月の売上</div>
           <div class="sales-kpi-value large" id="sCurrentSales">—</div>
           <div class="sales-kpi-sub neutral" id="sCurrentSalesSub"></div>
         </div>
         <div class="sales-kpi">
-          <div class="sales-kpi-label">先月比</div>
+          <div class="sales-kpi-label" id="sMoMLabel">先月比</div>
           <div class="sales-kpi-value" id="sMoM">—</div>
           <div class="sales-kpi-sub neutral" id="sMoMSub"></div>
         </div>
         <div class="sales-kpi">
-          <div class="sales-kpi-label">今月の購入件数</div>
+          <div class="sales-kpi-label" id="sPurchaseLabel">今月の購入件数</div>
           <div class="sales-kpi-value" id="sPurchaseCount">—</div>
           <div class="sales-kpi-sub neutral" id="sPurchaseSub"></div>
         </div>
@@ -500,7 +500,13 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
 
     <!-- ⑨ TOP10 -->
     <div class="section-hd">
-      <div class="section-title">🏆 いいね TOP 10</div>
+      <div class="section-title">🏆 TOP 10</div>
+      <div class="paid-sort-group">
+        <button class="paid-sort-btn" data-top10sort="readCount">閲覧数</button>
+        <button class="paid-sort-btn active" data-top10sort="likeCount">いいね</button>
+        <button class="paid-sort-btn" data-top10sort="commentCount">コメント</button>
+        <button class="paid-sort-btn" data-top10sort="engRate">ENG率</button>
+      </div>
     </div>
     <div class="top-list" id="top10"></div>
 
@@ -528,6 +534,10 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
       <button class="f-btn c-story"  data-cat="シリーズ物語">シリーズ物語</button>
       <button class="f-btn c-coffee" data-cat="コーヒー">コーヒー</button>
       <button class="f-btn c-other"  data-cat="その他">その他</button>
+      <span style="width:1px;background:#e5e7eb;height:20px;margin:0 4px;display:inline-block"></span>
+      <button class="f-btn active" data-paid="all">すべて</button>
+      <button class="f-btn"        data-paid="paid" style="color:#854d0e">💰 有料のみ</button>
+      <button class="f-btn"        data-paid="free" style="color:#166534">🆓 無料のみ</button>
       <div class="search-wrap">
         <input type="text" id="searchInput" class="search-input" placeholder="記事名で検索...">
       </div>
@@ -536,17 +546,17 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
 
     <div class="table-card" style="margin-bottom:28px">
       <table class="tbl">
-        <thead>
+        <thead id="articlesTableHead">
           <tr>
             <th class="col-r">#</th>
             <th>タイトル</th>
             <th>カテゴリ</th>
             <th>投稿日時</th>
             <th>種別</th>
-            <th class="col-r">閲覧数</th>
-            <th class="col-r">いいね</th>
-            <th class="col-r">コメント</th>
-            <th class="col-r">エンゲージメント</th>
+            <th class="col-r" data-sort="readCount"    data-label="閲覧数">閲覧数 ⇅</th>
+            <th class="col-r" data-sort="likeCount"    data-label="いいね">いいね ⇅</th>
+            <th class="col-r" data-sort="commentCount" data-label="コメント">コメント ⇅</th>
+            <th class="col-r" data-sort="engRate"      data-label="エンゲージメント">エンゲージメント ⇅</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>

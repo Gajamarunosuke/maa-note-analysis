@@ -17,14 +17,18 @@ const CAT_BG = {
 const MEDALS = ["🥇","🥈","🥉"];
 
 // ─── 状態 ───────────────────────────────────────────────────
-let currentCat      = "all";
-let currentPeriod   = 30;
-let chartGran       = "day";
-let paidSortKey     = "sales";
-let salesGranularity = "month";
-let allArticles     = [];
-let currentData     = null;
-const charts        = {};
+let currentCat        = "all";
+let currentPaidFilter = "all"; // "all" | "paid" | "free"
+let top10SortKey      = "likeCount";
+let tableSortKey      = "date"; // "date" | "readCount" | "likeCount" | "commentCount" | "engRate"
+let tableSortDir      = "desc"; // "asc" | "desc"
+let currentPeriod     = 30;
+let chartGran         = "day";
+let paidSortKey       = "sales";
+let salesGranularity  = "month";
+let allArticles       = [];
+let currentData       = null;
+const charts          = {};
 
 // ─── カテゴリ判定 ────────────────────────────────────────────
 function categorize(title) {
@@ -344,6 +348,88 @@ ${freeTop || "  データなし"}
 スコアは現状の出来を1〜10で評価（1＝要改善・10＝優秀）。各項目3〜4行以内。抽象論不要。`;
 }
 
+// ─── 売上 KPI を期間粒度に合わせて更新 ────────────────────────
+function renderSalesKPIsByGran(sales, gran) {
+  if (!sales || sales.error) return;
+
+  const purchases = sales.purchases ?? [];
+  const now = new Date();
+
+  const LABELS = {
+    day:   { curr: "今日の売上",  comp: "前日比",  purchaseLbl: "今日の購入件数"  },
+    week:  { curr: "今週の売上",  comp: "前週比",  purchaseLbl: "今週の購入件数"  },
+    month: { curr: "今月の売上",  comp: "前月比",  purchaseLbl: "今月の購入件数"  },
+    all:   { curr: "今月の売上",  comp: "前月比",  purchaseLbl: "今月の購入件数"  },
+  };
+  const lbl = LABELS[gran] ?? LABELS.month;
+
+  const labelSales    = document.getElementById("sSalesLabel");
+  const labelMoM      = document.getElementById("sMoMLabel");
+  const labelPurchase = document.getElementById("sPurchaseLabel");
+  if (labelSales)    labelSales.textContent    = lbl.curr;
+  if (labelMoM)      labelMoM.textContent      = lbl.comp;
+  if (labelPurchase) labelPurchase.textContent = lbl.purchaseLbl;
+
+  // "all" は既存の月次表示のまま
+  if (gran === "all") return;
+
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function getKey(d) {
+    if (gran === "day")  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    if (gran === "week") return `${d.getFullYear()}-W${pad(getISOWeek(d))}`;
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+  }
+
+  const currKey = getKey(now);
+  const prevDate = new Date(now);
+  if (gran === "day")   prevDate.setDate(now.getDate() - 1);
+  if (gran === "week")  prevDate.setDate(now.getDate() - 7);
+  if (gran === "month") prevDate.setMonth(now.getMonth() - 1);
+  const prevKey = getKey(prevDate);
+
+  const map = {};
+  for (const p of purchases) {
+    if (p.is_refund) continue;
+    const d = new Date(p.purchased_at ?? p.created_at ?? "");
+    if (isNaN(d)) continue;
+    const key = getKey(d);
+    if (!map[key]) map[key] = { amount: 0, count: 0 };
+    map[key].amount += p.price ?? 0;
+    map[key].count++;
+  }
+
+  const curr = map[currKey] ?? { amount: 0, count: 0 };
+  const prev = map[prevKey] ?? { amount: 0, count: 0 };
+
+  // 売上
+  document.getElementById("sCurrentSales").textContent    = fmtYen(curr.amount);
+  document.getElementById("sCurrentSalesSub").textContent =
+    gran === "day" ? "本日実績" : gran === "week" ? "今週実績" : "今月実績";
+
+  // 比較
+  if (prev.amount > 0) {
+    const diff = curr.amount - prev.amount;
+    const rate = (diff / prev.amount * 100).toFixed(1);
+    const sign = diff >= 0 ? "+" : "";
+    const el   = document.getElementById("sMoM");
+    el.textContent = `${sign}${rate}%`;
+    el.style.color = diff >= 0 ? "#34d399" : "#f87171";
+    document.getElementById("sMoMSub").textContent = `前期 ${fmtYen(prev.amount)}`;
+    document.getElementById("sMoMSub").className   = `sales-kpi-sub ${diff >= 0 ? "up" : "down"}`;
+  } else {
+    document.getElementById("sMoM").textContent    = curr.amount > 0 ? "NEW" : "—";
+    document.getElementById("sMoM").style.color    = "";
+    document.getElementById("sMoMSub").textContent = "前期データなし";
+    document.getElementById("sMoMSub").className   = "sales-kpi-sub neutral";
+  }
+
+  // 購入件数
+  document.getElementById("sPurchaseCount").textContent = `${curr.count}件`;
+  document.getElementById("sPurchaseSub").textContent   =
+    curr.count > 0 && curr.amount > 0
+      ? `平均 ${fmtYen(Math.round(curr.amount / curr.count))}/件` : "";
+}
+
 // ─── 売上推移チャート ─────────────────────────────────────────
 function getISOWeek(d) {
   const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -603,6 +689,105 @@ function setChartGran(gran, btn) {
   document.querySelectorAll(".period-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   updateCharts();
+  updateKPIDeltas(gran);
+}
+
+// ─── 期間別 KPI デルタ ────────────────────────────────────────
+function computePeriodDelta(gran) {
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function getKey(d) {
+    if (gran === "day")  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    if (gran === "week") return `${d.getFullYear()}-W${pad(getISOWeek(d))}`;
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+  }
+
+  const today = new Date();
+  // 前期間と前々期間（現在進行中の期間は使わない）
+  const prevDate = new Date(today);
+  const prevPrevDate = new Date(today);
+  if (gran === "day") {
+    prevDate.setDate(today.getDate() - 1);
+    prevPrevDate.setDate(today.getDate() - 2);
+  } else if (gran === "week") {
+    prevDate.setDate(today.getDate() - 7);
+    prevPrevDate.setDate(today.getDate() - 14);
+  } else {
+    prevDate.setMonth(today.getMonth() - 1);
+    prevPrevDate.setMonth(today.getMonth() - 2);
+  }
+
+  const prevKey     = getKey(prevDate);
+  const prevPrevKey = getKey(prevPrevDate);
+
+  const map = {};
+  for (const a of allArticles) {
+    if (!a.publishAt) continue;
+    const key = getKey(new Date(a.publishAt));
+    if (!map[key]) map[key] = { posts: 0, likes: 0, comments: 0, views: 0 };
+    map[key].posts++;
+    map[key].likes    += a.likeCount    ?? 0;
+    map[key].comments += a.commentCount ?? 0;
+    if (a.readCount >= 0) map[key].views += a.readCount;
+  }
+
+  const curr = map[prevKey]     || { posts: 0, likes: 0, comments: 0, views: 0 };
+  const prev = map[prevPrevKey] || { posts: 0, likes: 0, comments: 0, views: 0 };
+
+  function delta(c, p) {
+    if (p === 0) return null;
+    return (c - p) / p * 100;
+  }
+
+  return {
+    curr, prev,
+    postsDelta:    delta(curr.posts,    prev.posts),
+    likesDelta:    delta(curr.likes,    prev.likes),
+    commentsDelta: delta(curr.comments, prev.comments),
+    viewsDelta:    delta(curr.views,    prev.views),
+    label: gran === "day" ? "前日比" : gran === "week" ? "前週比" : "前月比",
+  };
+}
+
+function updateKPIDeltas(gran) {
+  if (!allArticles.length) return;
+
+  if (gran === "all") {
+    const total = allArticles.length;
+    const tl    = allArticles.reduce((s, a) => s + (a.likeCount    ?? 0), 0);
+    const tc    = allArticles.reduce((s, a) => s + (a.commentCount ?? 0), 0);
+    document.getElementById("kViewsSub").textContent    = "累計（全期間）";
+    document.getElementById("kLikesSub").textContent    = `平均 ${total ? (tl/total).toFixed(1) : 0} / 記事`;
+    document.getElementById("kEngSub").textContent      = "(いいね+コメント)÷閲覧数";
+    document.getElementById("kCommentsSub").textContent = `平均 ${total ? (tc/total).toFixed(1) : 0} / 記事`;
+    return;
+  }
+
+  const d = computePeriodDelta(gran);
+
+  function badge(v) {
+    if (v === null) return "";
+    const up   = v >= 0;
+    const col  = up ? "#10b981" : "#ef4444";
+    const sign = up ? "↑+" : "↓";
+    return `<span style="color:${col};font-weight:700"> ${sign}${Math.abs(v).toFixed(1)}%</span>`
+         + `<span style="color:#9ca3af;font-size:0.65rem"> ${d.label}</span>`;
+  }
+
+  function setSub(id, primary, deltaVal) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = primary + badge(deltaVal);
+  }
+
+  setSub("kViewsSub",    `直近 ${fmt(d.curr.views)}PV`,      d.viewsDelta);
+  setSub("kLikesSub",    `直近 ${fmt(d.curr.likes)}件`,      d.likesDelta);
+  setSub("kCommentsSub", `直近 ${fmt(d.curr.comments)}件`,   d.commentsDelta);
+
+  const currEng = d.curr.views > 0 ? (d.curr.likes + d.curr.comments) / d.curr.views * 100 : null;
+  const prevEng = d.prev.views > 0 ? (d.prev.likes + d.prev.comments) / d.prev.views * 100 : null;
+  const engDelta = (currEng !== null && prevEng !== null && prevEng > 0)
+    ? (currEng - prevEng) / prevEng * 100 : null;
+  setSub("kEngSub", currEng !== null ? `直近 ${currEng.toFixed(2)}%` : "要ログイン", engDelta);
 }
 
 // ─── メインレンダリング ──────────────────────────────────────
@@ -634,6 +819,7 @@ async function render(data) {
 
   // ① 売上ヒーロー
   await renderSalesSection(data.sales ?? null);
+  renderSalesKPIsByGran(data.sales ?? null, salesGranularity);
 
   // ② ファネル
   await renderFunnel(arts, data.sales ?? null);
@@ -709,8 +895,33 @@ async function render(data) {
   renderCategoryBubble(allArticles);
 
   // TOP10
-  const top10 = [...arts].sort((a, b) => b.likeCount - a.likeCount).slice(0, 10);
-  document.getElementById("top10").innerHTML = top10.map((a, i) => `
+  renderTop10();
+
+  renderTable();
+  updateKPIDeltas(chartGran);
+
+  document.getElementById("footerText").textContent =
+    `Maa Note Analysis — ${total}記事 · いいね ${totalLikes.toLocaleString()} · ${timeAgo(data.updatedAt)}`;
+}
+
+// ─── TOP10 レンダリング ───────────────────────────────────────
+function renderTop10() {
+  if (!allArticles.length) return;
+
+  function sortVal(a) {
+    if (top10SortKey === "readCount")    return a.readCount    >= 0 ? a.readCount    : -1;
+    if (top10SortKey === "commentCount") return a.commentCount ?? 0;
+    if (top10SortKey === "engRate")
+      return (a.readCount > 0) ? (a.likeCount + a.commentCount) / a.readCount : -1;
+    return a.likeCount ?? 0; // likeCount default
+  }
+
+  const sorted = [...allArticles].sort((a, b) => sortVal(b) - sortVal(a)).slice(0, 10);
+
+  document.getElementById("top10").innerHTML = sorted.map((a, i) => {
+    const engStr = a.readCount > 0
+      ? `📊 ${((a.likeCount + a.commentCount) / a.readCount * 100).toFixed(1)}%` : "";
+    return `
     <div class="top-item">
       <div class="top-rank">${MEDALS[i] ?? `<span style="font-size:.8rem">${i+1}</span>`}</div>
       <div class="top-info">
@@ -721,18 +932,54 @@ async function render(data) {
         ${a.readCount >= 0 ? `<span class="n-view">👁 ${fmt(a.readCount)}</span>` : ""}
         <span class="n-like">♥ ${fmt(a.likeCount)}</span>
         <span class="n-cmt">💬 ${a.commentCount}</span>
+        ${engStr ? `<span style="color:#8b5cf6">${engStr}</span>` : ""}
       </div>
-    </div>`).join("");
-
-  renderTable();
-
-  document.getElementById("footerText").textContent =
-    `Maa Note Analysis — ${total}記事 · いいね ${totalLikes.toLocaleString()} · ${timeAgo(data.updatedAt)}`;
+    </div>`;
+  }).join("");
 }
 
 // ─── 全記事テーブル ───────────────────────────────────────────
+function getSortValue(a, key) {
+  if (key === "readCount")    return a.readCount    >= 0 ? a.readCount    : -1;
+  if (key === "likeCount")    return a.likeCount    ?? 0;
+  if (key === "commentCount") return a.commentCount ?? 0;
+  if (key === "engRate")
+    return (a.readCount > 0) ? (a.likeCount + a.commentCount) / a.readCount : -1;
+  return a.dateObj?.getTime() ?? 0; // date (default)
+}
+
+function updateTableSortHeaders() {
+  const SORT_COL = { readCount: 5, likeCount: 6, commentCount: 7, engRate: 8 };
+  document.querySelectorAll("#articlesTableHead th[data-sort]").forEach(th => {
+    const key = th.dataset.sort;
+    const isActive = key === tableSortKey;
+    const arrow = isActive ? (tableSortDir === "desc" ? " ▼" : " ▲") : " ⇅";
+    th.style.cursor = "pointer";
+    th.style.color  = isActive ? "#6366f1" : "";
+    th.style.userSelect = "none";
+    // replace any existing arrow
+    th.textContent = th.dataset.label + arrow;
+  });
+}
+
+function setTableSort(key) {
+  if (tableSortKey === key) {
+    tableSortDir = tableSortDir === "desc" ? "asc" : "desc";
+  } else {
+    tableSortKey = key;
+    tableSortDir = "desc";
+  }
+  renderTable();
+}
+
 function renderTable() {
-  const rows = allArticles.map((a, i) => {
+  const sorted = [...allArticles].sort((a, b) => {
+    const va = getSortValue(a, tableSortKey);
+    const vb = getSortValue(b, tableSortKey);
+    return tableSortDir === "desc" ? vb - va : va - vb;
+  });
+
+  const rows = sorted.map((a, i) => {
     const catCls = CAT_BG[a.category] ?? "c-other";
     const paid   = a.isPaid
       ? '<span class="badge b-paid">有料</span>'
@@ -740,7 +987,7 @@ function renderTable() {
     const views  = a.readCount >= 0 ? fmt(a.readCount) : "—";
     const artEng = (a.readCount >= 0 && a.readCount > 0)
       ? pct(((a.likeCount + a.commentCount) / a.readCount) * 100) : "—";
-    return `<tr data-cat="${a.category}" data-title="${a.title.toLowerCase()}">
+    return `<tr data-cat="${a.category}" data-title="${a.title.toLowerCase()}" data-paid="${a.isPaid ? "paid" : "free"}">
       <td class="col-sm col-r" style="color:#9ca3af">${i+1}</td>
       <td><a href="${a.url}" class="art-link" target="_blank">${a.title.slice(0,58)}${a.title.length>58?"…":""}</a></td>
       <td><span class="cat-badge ${catCls}">${a.category}</span></td>
@@ -753,6 +1000,7 @@ function renderTable() {
     </tr>`;
   }).join("");
   document.getElementById("tableBody").innerHTML = rows;
+  updateTableSortHeaders();
   applyFilter();
 }
 
@@ -761,7 +1009,8 @@ function applyFilter() {
   let visible = 0;
   document.querySelectorAll("#tableBody tr").forEach(row => {
     const show = (!q || (row.dataset.title ?? "").includes(q))
-               && (currentCat === "all" || row.dataset.cat === currentCat);
+               && (currentCat === "all" || row.dataset.cat === currentCat)
+               && (currentPaidFilter === "all" || row.dataset.paid === currentPaidFilter);
     row.style.display = show ? "" : "none";
     if (show) visible++;
   });
@@ -771,7 +1020,14 @@ function applyFilter() {
 
 function setCat(cat, btn) {
   currentCat = cat;
-  document.querySelectorAll(".f-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".f-btn[data-cat]").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  applyFilter();
+}
+
+function setPaidFilter(val, btn) {
+  currentPaidFilter = val;
+  document.querySelectorAll(".f-btn[data-paid]").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   applyFilter();
 }
@@ -1234,7 +1490,24 @@ document.querySelectorAll(".f-btn[data-cat]").forEach(btn => {
   btn.addEventListener("click", () => setCat(btn.dataset.cat, btn));
 });
 
+document.querySelectorAll(".f-btn[data-paid]").forEach(btn => {
+  btn.addEventListener("click", () => setPaidFilter(btn.dataset.paid, btn));
+});
+
+document.querySelectorAll(".paid-sort-btn[data-top10sort]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".paid-sort-btn[data-top10sort]").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    top10SortKey = btn.dataset.top10sort;
+    renderTop10();
+  });
+});
+
 document.getElementById("searchInput")?.addEventListener("input", applyFilter);
+
+document.querySelectorAll("#articlesTableHead th[data-sort]").forEach(th => {
+  th.addEventListener("click", () => setTableSort(th.dataset.sort));
+});
 
 document.querySelectorAll(".sgran-btn").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -1242,6 +1515,7 @@ document.querySelectorAll(".sgran-btn").forEach(btn => {
     btn.classList.add("active");
     salesGranularity = btn.dataset.gran;
     updateSalesCharts();
+    renderSalesKPIsByGran(currentData?.sales ?? null, salesGranularity);
   });
 });
 
