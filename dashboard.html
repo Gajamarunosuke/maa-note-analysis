@@ -599,7 +599,16 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
     </div>
     <div class="art-modal-meta" id="modalMeta"></div>
     <div class="art-modal-kpi-row" id="modalKpiRow"></div>
-    <div class="art-modal-section" id="modalChartLabel" style="display:none">📈 購入推移（投稿日〜現在）</div>
+    <div class="art-modal-section" id="modalChartLabel" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span>📈 購入推移（投稿日〜現在）</span>
+        <div class="sgran-group">
+          <button class="sgran-btn" data-mgran="day">日別</button>
+          <button class="sgran-btn active" data-mgran="week">週別</button>
+          <button class="sgran-btn" data-mgran="month">月別</button>
+        </div>
+      </div>
+    </div>
     <div style="height:240px;position:relative" id="modalChartWrap">
       <canvas id="modalChart"></canvas>
     </div>

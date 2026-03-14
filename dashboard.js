@@ -29,6 +29,8 @@ let salesGranularity  = "month";
 let allArticles       = [];
 let currentData       = null;
 const charts          = {};
+let modalGran         = "week";
+let currentModalArticleId = null;
 
 // ─── カテゴリ判定 ────────────────────────────────────────────
 function categorize(title) {
@@ -1585,7 +1587,9 @@ function renderArticleModal(articleId) {
       <div class="art-modal-kpi-sub">件/週</div>
     </div>` : `<div style="grid-column:1/-1;text-align:center;color:#9ca3af;font-size:.8rem;padding:8px">無料記事のため販売データなし</div>`;
 
-  // チャートデータ作成（投稿日〜今日）
+  // チャートデータ作成（投稿日〜今日・粒度切替対応）
+  currentModalArticleId = articleId;
+
   if (totalCount === 0) {
     document.getElementById("modalChartWrap").style.display = "none";
     document.getElementById("modalChartLabel").style.display = "none";
@@ -1594,67 +1598,124 @@ function renderArticleModal(articleId) {
     document.getElementById("modalChartWrap").style.display = "block";
     document.getElementById("modalChartLabel").style.display = "block";
     document.getElementById("modalNoData").style.display = "none";
+    renderModalChart(artPurchases, article.publishAt);
+  }
 
-    const map = {};
-    const startDate = new Date(article.publishAt); startDate.setHours(0,0,0,0);
-    const endDate   = new Date(); endDate.setHours(0,0,0,0);
-    const cur = new Date(startDate);
-    while (cur <= endDate) {
+  document.querySelectorAll("[data-mgran]").forEach(b => {
+    b.classList.toggle("active", b.dataset.mgran === modalGran);
+  });
+
+  document.getElementById("articleModal").classList.add("open");
+}
+
+// ─── 記事別購入推移集計（投稿日〜現在・粒度切替対応） ────────
+function aggregateArticlePurchases(artPurchases, gran, publishAt) {
+  const map   = {};
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = new Date(publishAt); start.setHours(0,0,0,0);
+
+  if (gran === "day") {
+    const cur = new Date(start);
+    while (cur <= today) {
       const k = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,"0")}-${String(cur.getDate()).padStart(2,"0")}`;
       map[k] = { count: 0, amount: 0 };
       cur.setDate(cur.getDate() + 1);
     }
-    for (const p of artPurchases) {
-      const d = new Date(p.purchased_at);
-      const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-      if (map[k]) { map[k].count++; map[k].amount += p.price ?? 0; }
+  } else if (gran === "week") {
+    const cur = new Date(start);
+    while (cur <= today) {
+      const k = `${cur.getFullYear()}-W${String(getISOWeek(cur)).padStart(2,"0")}`;
+      if (!map[k]) map[k] = { count: 0, amount: 0 };
+      cur.setDate(cur.getDate() + 7);
     }
-
-    const labels  = Object.keys(map).sort();
-    const counts  = labels.map(k => map[k].count);
-    const amounts = labels.map(k => map[k].amount);
-    let cC = 0, cA = 0;
-    const cumCounts  = counts.map(v  => (cC += v));
-    const cumAmounts = amounts.map(v => (cA += v));
-
-    if (charts["modalChart"]) charts["modalChart"].destroy();
-    charts["modalChart"] = new Chart(
-      document.getElementById("modalChart").getContext("2d"), {
-      data: { labels, datasets: [
-        { type:"bar",  label:"期間別購入数", data:counts,
-          backgroundColor:"rgba(99,102,241,.50)", borderRadius:4, yAxisID:"y",  order:2 },
-        { type:"line", label:"累積購入数",   data:cumCounts,
-          borderColor:"#6366f1", backgroundColor:"rgba(99,102,241,.06)",
-          tension:.3, fill:true, pointRadius:2, borderWidth:2, yAxisID:"y2", order:1 },
-        { type:"line", label:"累積売上(¥)", data:cumAmounts,
-          borderColor:"#10b981", backgroundColor:"transparent",
-          tension:.3, fill:false, pointRadius:2, borderWidth:2, yAxisID:"y3", order:1 },
-      ]},
-      options: {
-        responsive:true, maintainAspectRatio:false,
-        interaction:{ mode:"index", intersect:false },
-        plugins:{ legend:{ labels:{ boxWidth:12, padding:12 }},
-          tooltip:{ callbacks:{ label(ctx) {
-            if (ctx.dataset.yAxisID === "y3") return `累積売上: ¥${ctx.parsed.y.toLocaleString()}`;
-            if (ctx.dataset.yAxisID === "y2") return `累積件数: ${ctx.parsed.y}件`;
-            return `期間購入: ${ctx.parsed.y}件`;
-          }}}},
-        scales:{
-          x:{ ticks:{ color:"#9ca3af", maxTicksLimit:12 }, grid:{ display:false }},
-          y:{ position:"left",  ticks:{ color:"#6366f1", precision:0, stepSize:1 },
-              grid:{ color:"#f3f4f6" },
-              title:{ display:true, text:"期間別", color:"#6366f1", font:{size:9}}},
-          y2:{ position:"right", ticks:{ color:"#8b5cf6", precision:0 }, grid:{ display:false },
-               title:{ display:true, text:"累積件数", color:"#8b5cf6", font:{size:9}}},
-          y3:{ position:"right", display:false,
-               ticks:{ color:"#10b981", callback: v => `¥${v.toLocaleString()}` }},
-        },
-      },
-    });
+    const todayKey = `${today.getFullYear()}-W${String(getISOWeek(today)).padStart(2,"0")}`;
+    if (!map[todayKey]) map[todayKey] = { count: 0, amount: 0 };
+  } else {
+    const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+    const end = new Date(today.getFullYear(), today.getMonth(), 1);
+    while (cur <= end) {
+      const k = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,"0")}`;
+      map[k] = { count: 0, amount: 0 };
+      cur.setMonth(cur.getMonth() + 1);
+    }
   }
 
-  document.getElementById("articleModal").classList.add("open");
+  for (const p of artPurchases) {
+    const d = new Date(p.purchased_at);
+    if (isNaN(d) || d < start) continue;
+    let k;
+    if (gran === "day") {
+      k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    } else if (gran === "week") {
+      k = `${d.getFullYear()}-W${String(getISOWeek(d)).padStart(2,"0")}`;
+    } else {
+      k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    }
+    if (map[k]) { map[k].count++; map[k].amount += p.price ?? 0; }
+  }
+
+  const labels = Object.keys(map).sort();
+  return { labels, counts: labels.map(k => map[k].count), amounts: labels.map(k => map[k].amount) };
 }
+
+// ─── モーダルチャートのみ再描画（粒度切替時） ───────────────
+function renderModalChart(artPurchases, publishAt) {
+  const { labels, counts, amounts } = aggregateArticlePurchases(artPurchases, modalGran, publishAt);
+  let cC = 0, cA = 0;
+  const cumCounts  = counts.map(v  => (cC += v));
+  const cumAmounts = amounts.map(v => (cA += v));
+
+  if (charts["modalChart"]) charts["modalChart"].destroy();
+  charts["modalChart"] = new Chart(
+    document.getElementById("modalChart").getContext("2d"), {
+    data: { labels, datasets: [
+      { type:"bar",  label:"期間別購入数", data:counts,
+        backgroundColor:"rgba(99,102,241,.50)", borderRadius:4, yAxisID:"y",  order:2 },
+      { type:"line", label:"累積購入数",   data:cumCounts,
+        borderColor:"#6366f1", backgroundColor:"rgba(99,102,241,.06)",
+        tension:.3, fill:true, pointRadius:2, borderWidth:2, yAxisID:"y2", order:1 },
+      { type:"line", label:"累積売上(¥)", data:cumAmounts,
+        borderColor:"#10b981", backgroundColor:"transparent",
+        tension:.3, fill:false, pointRadius:2, borderWidth:2, yAxisID:"y3", order:1 },
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:"index", intersect:false },
+      plugins:{ legend:{ labels:{ boxWidth:12, padding:12 }},
+        tooltip:{ callbacks:{ label(ctx) {
+          if (ctx.dataset.yAxisID === "y3") return `累積売上: ¥${ctx.parsed.y.toLocaleString()}`;
+          if (ctx.dataset.yAxisID === "y2") return `累積件数: ${ctx.parsed.y}件`;
+          return `期間購入: ${ctx.parsed.y}件`;
+        }}}},
+      scales:{
+        x:{ ticks:{ color:"#9ca3af", maxTicksLimit:14 }, grid:{ display:false }},
+        y:{ position:"left",  ticks:{ color:"#6366f1", precision:0, stepSize:1 },
+            grid:{ color:"#f3f4f6" },
+            title:{ display:true, text:"期間別", color:"#6366f1", font:{size:9}}},
+        y2:{ position:"right", ticks:{ color:"#8b5cf6", precision:0 }, grid:{ display:false },
+             title:{ display:true, text:"累積件数", color:"#8b5cf6", font:{size:9}}},
+        y3:{ position:"right", display:false,
+             ticks:{ color:"#10b981", callback: v => `¥${v.toLocaleString()}` }},
+      },
+    },
+  });
+}
+
+// モーダル粒度切替
+document.addEventListener("click", e => {
+  const btn = e.target.closest("[data-mgran]");
+  if (!btn) return;
+  modalGran = btn.dataset.mgran;
+  document.querySelectorAll("[data-mgran]").forEach(b => b.classList.toggle("active", b.dataset.mgran === modalGran));
+  if (currentModalArticleId) {
+    const article = allArticles.find(a => a.id === currentModalArticleId);
+    if (!article) return;
+    const artPurchases = (currentData?.sales?.purchases ?? [])
+      .filter(p => !p.is_refund && p.content?.key === currentModalArticleId)
+      .sort((a, b) => new Date(a.purchased_at) - new Date(b.purchased_at));
+    if (artPurchases.length > 0) renderModalChart(artPurchases, article.publishAt);
+  }
+});
 
 // 記事詳細モーダル：有料記事テーブル行クリック（イベント委譲）
 const paidTableBodyEl = document.getElementById("paidTableBody");
