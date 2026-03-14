@@ -519,6 +519,9 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
   <div class="art-modal-box">
     <button class="art-modal-close" id="modalClose">✕</button>
     <div class="art-modal-title" id="modalTitle"></div>
+    <div style="margin-bottom:12px">
+      <a id="modalNoteLink" href="#" target="_blank" style="font-size:0.75rem;color:#6366f1;text-decoration:none;border:1px solid #6366f1;padding:4px 12px;border-radius:6px;font-weight:600">↗ noteで開く</a>
+    </div>
     <div class="art-modal-meta" id="modalMeta"></div>
     <div class="art-modal-kpi-row" id="modalKpiRow"></div>
     <div class="art-modal-section" id="modalChartLabel" style="display:none">📈 購入推移（投稿日〜現在）</div>
@@ -852,7 +855,7 @@ function renderPaidTable(arts, sales) {
     const barW = a.readCount >= 0 ? Math.max(a.readCount / maxViews * 60, 2) : 0;
     return `<tr>
       <td class="col-sm col-r" style="color:#9ca3af">${i+1}</td>
-      <td><a href="${a.url}" class="art-link">${a.title.slice(0,52)}${a.title.length>52?"…":""}</a></td>
+      <td><span class="art-link" style="cursor:pointer">${a.title.slice(0,52)}${a.title.length>52?"…":""}</span></td>
       <td class="col-r col-sm n-view"><span class="purchase-bar" style="width:${barW}px"></span>${fmt(a.readCount)}</td>
       <td class="col-r col-sm n-like">♥ ${fmt(a.likeCount)}</td>
       <td class="col-r col-sm" style="color:#059669;font-weight:600">${a.artSales >= 0 ? fmtYen(a.artSales) : "—"}</td>
@@ -1336,7 +1339,7 @@ function renderTable() {
     const artEng = (a.readCount > 0) ? pct(((a.likeCount + a.commentCount) / a.readCount) * 100) : "—";
     return `<tr data-cat="${a.category}" data-title="${a.title.toLowerCase()}" data-paid="${a.isPaid ? 1 : 0}" data-artid="${a.id}" title="クリックで詳細を表示">
       <td class="col-sm col-r" style="color:#9ca3af">${i+1}</td>
-      <td><a href="${a.url}" class="art-link">${a.title.slice(0,56)}${a.title.length>56?"…":""}</a></td>
+      <td><span class="art-link" style="cursor:pointer">${a.title.slice(0,56)}${a.title.length>56?"…":""}</span></td>
       <td><span class="cat-badge ${catCls}">${a.category}</span></td>
       <td class="col-sm" style="color:#6b7280;font-size:.72rem">${fmtDate(a.publishAt)}</td>
       <td>${paid}</td>
@@ -1384,6 +1387,7 @@ function renderArticleModal(articleId) {
 
   // タイトル・メタ
   document.getElementById("modalTitle").textContent = article.title;
+  document.getElementById("modalNoteLink").href = article.url ?? "#";
   document.getElementById("modalMeta").innerHTML = [
     `📅 ${article.dateStr}`,
     `👁 閲覧数 ${fmt(article.readCount)}`,

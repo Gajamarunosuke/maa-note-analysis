@@ -922,10 +922,10 @@ function renderTop10() {
     const engStr = a.readCount > 0
       ? `📊 ${((a.likeCount + a.commentCount) / a.readCount * 100).toFixed(1)}%` : "";
     return `
-    <div class="top-item">
+    <div class="top-item" data-artid="${a.id}">
       <div class="top-rank">${MEDALS[i] ?? `<span style="font-size:.8rem">${i+1}</span>`}</div>
       <div class="top-info">
-        <a href="${a.url}" class="top-title-link" target="_blank">${a.title.slice(0,70)}${a.title.length>70?"…":""}</a>
+        <span class="top-title-link">${a.title.slice(0,70)}${a.title.length>70?"…":""}</span>
         <div class="top-meta">${a.dateStr} · ${a.category}</div>
       </div>
       <div class="top-nums">
@@ -987,9 +987,9 @@ function renderTable() {
     const views  = a.readCount >= 0 ? fmt(a.readCount) : "—";
     const artEng = (a.readCount >= 0 && a.readCount > 0)
       ? pct(((a.likeCount + a.commentCount) / a.readCount) * 100) : "—";
-    return `<tr data-cat="${a.category}" data-title="${a.title.toLowerCase()}" data-paid="${a.isPaid ? "paid" : "free"}">
+    return `<tr data-cat="${a.category}" data-title="${a.title.toLowerCase()}" data-paid="${a.isPaid ? "paid" : "free"}" data-artid="${a.id}">
       <td class="col-sm col-r" style="color:#9ca3af">${i+1}</td>
-      <td><a href="${a.url}" class="art-link" target="_blank">${a.title.slice(0,58)}${a.title.length>58?"…":""}</a></td>
+      <td><span class="art-link" style="cursor:pointer">${a.title.slice(0,58)}${a.title.length>58?"…":""}</span></td>
       <td><span class="cat-badge ${catCls}">${a.category}</span></td>
       <td class="col-sm" style="color:#6b7280;font-size:.72rem">${a.dateStr}</td>
       <td>${paid}</td>
@@ -1534,4 +1534,150 @@ document.querySelectorAll(".paid-sort-btn[data-psort]").forEach(btn => {
     btn.classList.add("active");
     if (currentData) renderPaidTable(allArticles, currentData.sales ?? null);
   });
+});
+
+// ─── 記事詳細モーダル ────────────────────────────────────────
+function renderArticleModal(articleId) {
+  const article = allArticles.find(a => a.id === articleId);
+  if (!article) return;
+
+  // この記事の購入履歴を取得
+  const artPurchases = (currentData?.sales?.purchases ?? [])
+    .filter(p => !p.is_refund && p.content?.key === articleId)
+    .sort((a, b) => new Date(a.purchased_at) - new Date(b.purchased_at));
+
+  const totalCount  = artPurchases.length;
+  const totalSales  = artPurchases.reduce((s, p) => s + (p.price ?? 0), 0);
+  const artEng      = article.readCount > 0
+    ? ((article.likeCount + article.commentCount) / article.readCount * 100).toFixed(2) + "%"
+    : "—";
+
+  // タイトル・メタ
+  document.getElementById("modalTitle").textContent = article.title;
+  document.getElementById("modalNoteLink").href = article.url ?? "#";
+  document.getElementById("modalMeta").innerHTML = [
+    `📅 ${article.dateStr}`,
+    `👁 閲覧数 ${fmt(article.readCount)}`,
+    `♥ いいね ${fmt(article.likeCount)}`,
+    `💬 コメント ${article.commentCount}`,
+    `📊 ENG率 ${artEng}`,
+    article.isPaid ? `<span style="color:#059669;font-weight:700">💰 ${fmtYen(article.isPaid ? article.price || 0 : 0)} 記事</span>` : `<span style="color:#10b981">🆓 無料記事</span>`,
+  ].map(s => `<span>${s}</span>`).join("");
+
+  // KPIカード
+  const daysOnSale = article.isPaid && totalCount > 0
+    ? Math.max(1, Math.round((Date.now() - new Date(artPurchases[0].purchased_at)) / 86400000))
+    : null;
+  document.getElementById("modalKpiRow").innerHTML = article.isPaid ? `
+    <div class="art-modal-kpi">
+      <div class="art-modal-kpi-label">累計売上</div>
+      <div class="art-modal-kpi-val">${fmtYen(totalSales)}</div>
+      <div class="art-modal-kpi-sub">${totalCount}件購入</div>
+    </div>
+    <div class="art-modal-kpi">
+      <div class="art-modal-kpi-label">購入率</div>
+      <div class="art-modal-kpi-val">${article.readCount > 0 && totalCount > 0 ? (totalCount / article.readCount * 100).toFixed(2) + "%" : "—"}</div>
+      <div class="art-modal-kpi-sub">閲覧→購入</div>
+    </div>
+    <div class="art-modal-kpi">
+      <div class="art-modal-kpi-label">週平均販売</div>
+      <div class="art-modal-kpi-val">${daysOnSale ? (totalCount / daysOnSale * 7).toFixed(1) : "—"}</div>
+      <div class="art-modal-kpi-sub">件/週</div>
+    </div>` : `<div style="grid-column:1/-1;text-align:center;color:#9ca3af;font-size:.8rem;padding:8px">無料記事のため販売データなし</div>`;
+
+  // チャートデータ作成（投稿日〜今日）
+  if (totalCount === 0) {
+    document.getElementById("modalChartWrap").style.display = "none";
+    document.getElementById("modalChartLabel").style.display = "none";
+    document.getElementById("modalNoData").style.display = "block";
+  } else {
+    document.getElementById("modalChartWrap").style.display = "block";
+    document.getElementById("modalChartLabel").style.display = "block";
+    document.getElementById("modalNoData").style.display = "none";
+
+    const map = {};
+    const startDate = new Date(article.publishAt); startDate.setHours(0,0,0,0);
+    const endDate   = new Date(); endDate.setHours(0,0,0,0);
+    const cur = new Date(startDate);
+    while (cur <= endDate) {
+      const k = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,"0")}-${String(cur.getDate()).padStart(2,"0")}`;
+      map[k] = { count: 0, amount: 0 };
+      cur.setDate(cur.getDate() + 1);
+    }
+    for (const p of artPurchases) {
+      const d = new Date(p.purchased_at);
+      const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      if (map[k]) { map[k].count++; map[k].amount += p.price ?? 0; }
+    }
+
+    const labels  = Object.keys(map).sort();
+    const counts  = labels.map(k => map[k].count);
+    const amounts = labels.map(k => map[k].amount);
+    let cC = 0, cA = 0;
+    const cumCounts  = counts.map(v  => (cC += v));
+    const cumAmounts = amounts.map(v => (cA += v));
+
+    if (charts["modalChart"]) charts["modalChart"].destroy();
+    charts["modalChart"] = new Chart(
+      document.getElementById("modalChart").getContext("2d"), {
+      data: { labels, datasets: [
+        { type:"bar",  label:"期間別購入数", data:counts,
+          backgroundColor:"rgba(99,102,241,.50)", borderRadius:4, yAxisID:"y",  order:2 },
+        { type:"line", label:"累積購入数",   data:cumCounts,
+          borderColor:"#6366f1", backgroundColor:"rgba(99,102,241,.06)",
+          tension:.3, fill:true, pointRadius:2, borderWidth:2, yAxisID:"y2", order:1 },
+        { type:"line", label:"累積売上(¥)", data:cumAmounts,
+          borderColor:"#10b981", backgroundColor:"transparent",
+          tension:.3, fill:false, pointRadius:2, borderWidth:2, yAxisID:"y3", order:1 },
+      ]},
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:"index", intersect:false },
+        plugins:{ legend:{ labels:{ boxWidth:12, padding:12 }},
+          tooltip:{ callbacks:{ label(ctx) {
+            if (ctx.dataset.yAxisID === "y3") return `累積売上: ¥${ctx.parsed.y.toLocaleString()}`;
+            if (ctx.dataset.yAxisID === "y2") return `累積件数: ${ctx.parsed.y}件`;
+            return `期間購入: ${ctx.parsed.y}件`;
+          }}}},
+        scales:{
+          x:{ ticks:{ color:"#9ca3af", maxTicksLimit:12 }, grid:{ display:false }},
+          y:{ position:"left",  ticks:{ color:"#6366f1", precision:0, stepSize:1 },
+              grid:{ color:"#f3f4f6" },
+              title:{ display:true, text:"期間別", color:"#6366f1", font:{size:9}}},
+          y2:{ position:"right", ticks:{ color:"#8b5cf6", precision:0 }, grid:{ display:false },
+               title:{ display:true, text:"累積件数", color:"#8b5cf6", font:{size:9}}},
+          y3:{ position:"right", display:false,
+               ticks:{ color:"#10b981", callback: v => `¥${v.toLocaleString()}` }},
+        },
+      },
+    });
+  }
+
+  document.getElementById("articleModal").classList.add("open");
+}
+
+// 記事詳細モーダル：テーブル行クリック（イベント委譲）
+const tableBodyEl = document.getElementById("tableBody");
+if (tableBodyEl) {
+  tableBodyEl.addEventListener("click", e => {
+    const row = e.target.closest("tr[data-artid]");
+    if (row) renderArticleModal(row.dataset.artid);
+  });
+}
+
+// 記事詳細モーダル：TOP10クリック（イベント委譲）
+document.getElementById("top10")?.addEventListener("click", e => {
+  const item = e.target.closest("[data-artid]");
+  if (item) renderArticleModal(item.dataset.artid);
+});
+
+// モーダルを閉じる
+document.getElementById("modalClose")?.addEventListener("click", () => {
+  document.getElementById("articleModal").classList.remove("open");
+});
+document.getElementById("articleModal")?.addEventListener("click", e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove("open");
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.getElementById("articleModal")?.classList.remove("open");
 });
