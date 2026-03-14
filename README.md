@@ -1,128 +1,117 @@
-# Maa Note Analysis Ver.1
+# Maa Note Analysis Ver.2
 
-**note.com クリエイター向け 売上・コンテンツ分析ダッシュボード（Chrome拡張機能）**
+**2万PVあっても売れない──その理由を可視化するChrome拡張**
 
-[![Demo](https://img.shields.io/badge/🎯_デモを見る-GitHub_Pages-6366f1?style=for-the-badge)](https://gajamarunosuke.github.io/maa-note-analysis/dashboard_demo.html)
+note.com クリエイター向けの無料売上・コンテンツ分析ダッシュボードです。
+GASの設定不要。インストールするだけで動きます。
+
+[![Demo](https://img.shields.io/badge/🎯_デモを見る（インストール不要）-GitHub_Pages-6366f1?style=for-the-badge)](https://gajamarunosuke.github.io/maa-note-analysis/dashboard_demo.html)
+[![note](https://img.shields.io/badge/📝_導入解説記事-note-black?style=for-the-badge)](https://note.com/brainy_quince872/n/naa2d7bf96af4)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
 ---
 
-## 📊 こんな画面が使えます
+## なぜ作ったか
 
-> デモページ（架空データ）を[こちら](https://gajamarunosuke.github.io/maa-note-analysis/dashboard_demo.html)で確認できます。インストール不要でブラウザから見られます。
+noteで2ヶ月・2万PV・売上も立ちはじめた。
+でも**何が効いているのか、ずっとわからなかった。**
+
+公式ダッシュボードで見えるのは「閲覧数」と「スキ数」だけ。
+「どの記事が購入につながっているか」「購入率は何%か」は見えない。
+
+有料記事の閲覧数3,200・購入5件。**購入率0.16%。**
+これが低いのか高いのか、改善できるのか──数字が見えてはじめて問いが立てられた。
+
+---
+
+## できること（Ver.2）
 
 **💰 収益・売上タブ**
-- 今月の売上・購入件数・先月比・目標達成率
-- 年間累計売上・購入件数
-- 売上/購入件数の推移グラフ（月別/週別/日別）
+- 今月の売上・購入件数・先月比・目標達成率（日別/週別/月別で切替）
+- 売上/購入件数の推移グラフ（累積ライン付き）
+- 購入ファネル（総閲覧 → 有料記事閲覧 → 購入 → 平均単価）
 - 記事パフォーマンスマップ（PV × いいね × 売上のバブルチャート）
-- 有料記事別パフォーマンス一覧（閲覧数・購入率・ENG率）
-- Gemini AIによる改善アドバイス（要APIキー）
+- 有料記事一覧クリック → **記事別購入推移チャート**（いつ売れたか・ロングテール型か初速型か）
+- Gemini AIによる改善アドバイス（要APIキー・無料）
 
 **📊 コンテンツ分析タブ**
-- フォロワー数・総閲覧数・いいね・エンゲージメント率
-- 投稿数・いいね推移グラフ
-- カテゴリ別記事数・いいね数
-- カテゴリ効率マップ（記事数 × 平均PV × ENG率）
-- いいね TOP 10
+- フォロワー数・総閲覧数・ENG率・期間別KPI比較（前期比 +○%表示）
+- いいね/投稿数・閲覧数/ENG率の推移グラフ（日別/週別/月別）
+- カテゴリ効率マップ（バブルチャート）
+- TOP10（閲覧数/いいね/コメント/ENG率でソート切替）
 
 **📋 記事一覧タブ**
-- 全記事一覧（カテゴリフィルター・キーワード検索）
+- 全記事一覧（カテゴリ・有料/無料フィルター・キーワード検索）
+- テーブルヘッダークリックでソート
 - CSV エクスポート
 
 ---
 
-## 🔧 動作環境
+## シン・ダッシュボードとの違い
 
-- **Chrome**（または Chromium 系ブラウザ）
-- **note.com アカウント**
-- 売上・閲覧数の取得には **note.com にログイン済み** であること
+|  | シン・ダッシュボード | Maa Note Analysis |
+|--|--|--|
+| 強み | 誰がスキしたか・ファン分析 | 何が売れたか・売上分析 |
+| 技術 | GAS + Sheets + Looker Studio | Chrome拡張（インストールのみ） |
+| 向いている人 | ファンとの関係を深めたい | 有料記事の売上を伸ばしたい |
 
 ---
 
-## 📦 インストール方法
+## インストール方法
 
 ### 1. ダウンロード
 
 このページ右上の **Code → Download ZIP** からダウンロードして解凍します。
 
-```
-maa-note-analysis/
-├── manifest.json
-├── background.js
-├── popup.html / popup.js
-├── dashboard.html / dashboard.js
-├── options.html / options.js
-└── libs/chart.min.js
-```
-
 ### 2. Chrome に読み込む
 
-1. Chrome のアドレスバーに `chrome://extensions` と入力して開く
-2. 右上の **「デベロッパーモード」をON** にする
+1. Chromeで `chrome://extensions` を開く
+2. 右上の **「デベロッパーモード」をON**
 3. **「パッケージ化されていない拡張機能を読み込む」** をクリック
 4. 解凍したフォルダ（`maa-note-analysis`）を選択
 
 ツールバーに **M** のアイコンが表示されれば完了です。
 
----
+### 3. 初期設定
 
-## ⚙️ 初期設定
+1. アイコンを **右クリック → 「オプション」**
+2. 「クリエイター ID」に自分のnoteユーザーID（`https://note.com/〇〇〇` の `〇〇〇` 部分）を入力して保存
+3. note.com にログインした状態でアイコンをクリック → **「↻ 更新」** でデータ取得開始
 
-### クリエイター ID の設定（必須）
-
-1. ツールバーのアイコンを **右クリック → 「オプション」**
-2. 「クリエイター ID」欄に自分の **note.com のユーザーID** を入力
-
-   > note のプロフィールURL `https://note.com/〇〇〇` の `〇〇〇` 部分
-
-3. 月次目標（任意）を入力して **「保存」** をクリック
-
-### Gemini AI コメント機能（任意）
-
-1. [Google AI Studio](https://aistudio.google.com/apikey) で Gemini API キーを取得（無料）
-2. オプション画面の「Gemini API キー」欄に入力して保存
+> **Gemini AI コメント機能（任意）**
+> [Google AI Studio](https://aistudio.google.com/apikey) でAPIキーを無料取得 → オプション画面に入力
 
 ---
 
-## 🚀 使い方
-
-1. note.com にログインした状態で Chrome を開く
-2. ツールバーのアイコンをクリック → ポップアップが表示される
-3. **「↻ 更新」** を押すとデータ取得開始（初回は1〜2分かかります）
-4. **「📊 ダッシュボード」** で詳細画面を開く
-
----
-
-## ❓ よくある質問
+## よくある質問
 
 **Q. 売上が「—」と表示される**
-A. note.com の「売上管理ページ」でパスワード再確認が必要な場合があります。ダッシュボード内の案内ボタンから認証してください。
+A. note.com の「売上管理ページ」でパスワード再確認が必要です。ダッシュボード内の案内ボタンから認証してください。
 
 **Q. 閲覧数が取得できない**
 A. note.com にログインしてから「↻ 更新」を押してください。
 
 **Q. 更新の頻度は？**
-A. 毎日午前6時に自動更新されます。手動更新はいつでも可能です。
+A. 毎日午前6時に自動更新。手動更新はいつでも可能です。
 
 ---
 
-## ⚠️ 注意事項
+## 注意事項
 
-- **個人利用を想定しています**（自分のアカウントのデータのみ取得）
+- 個人利用を想定しています（自分のアカウントのデータのみ取得）
 - note.com の非公式APIを使用しているため、仕様変更により動作しなくなる場合があります
-- ブラウザのCookieを使用してデータを取得します（パスワード等は保存しません）
-- Gemini APIキーはブラウザのローカルストレージに保存されます
+- パスワード等は保存しません（ブラウザのCookieでデータ取得）
 
 ---
 
-## 📝 作者
+## 作者
 
-[@Gajamarunosuke](https://x.com/Gajamarunosuke) / [note](https://note.com/brainy_quince872)
+[@Gajamarunosuke](https://x.com/Gajamarunosuke) / [note: 杜の投資屋 まー](https://note.com/brainy_quince872)
 
-このツールの詳しい使い方・導入サポートは [有料note](https://note.com/brainy_quince872) で解説しています。
+導入詳細・Gemini APIの設定手順は [こちらの記事](https://note.com/brainy_quince872/n/naa2d7bf96af4) で解説しています。
 
 ---
 
-## 📄 ライセンス
+## ライセンス
 
 MIT License — 個人・商用問わず自由に使用・改変・再配布できます。
