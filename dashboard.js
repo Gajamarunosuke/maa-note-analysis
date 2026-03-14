@@ -250,9 +250,9 @@ function renderPaidTable(arts, sales) {
       ? pct(a.artPurchase / a.readCount * 100) : "—";
     const barW = a.readCount >= 0 ? Math.max(a.readCount / maxViews * 60, 2) : 0;
 
-    return `<tr>
+    return `<tr data-artid="${a.id}" title="クリックで詳細を表示">
       <td class="col-sm col-r" style="color:#9ca3af">${i+1}</td>
-      <td><a href="${a.url}" class="art-link" target="_blank">${a.title.slice(0,55)}${a.title.length>55?"…":""}</a></td>
+      <td><span class="art-link" style="cursor:pointer">${a.title.slice(0,55)}${a.title.length>55?"…":""}</span></td>
       <td class="col-r col-sm n-view">
         <span class="purchase-bar" style="width:${barW}px"></span>${a.readCount >= 0 ? fmt(a.readCount) : "—"}
       </td>
@@ -1654,6 +1654,15 @@ function renderArticleModal(articleId) {
   }
 
   document.getElementById("articleModal").classList.add("open");
+}
+
+// 記事詳細モーダル：有料記事テーブル行クリック（イベント委譲）
+const paidTableBodyEl = document.getElementById("paidTableBody");
+if (paidTableBodyEl) {
+  paidTableBodyEl.addEventListener("click", e => {
+    const row = e.target.closest("tr[data-artid]");
+    if (row) renderArticleModal(row.dataset.artid);
+  });
 }
 
 // 記事詳細モーダル：テーブル行クリック（イベント委譲）
