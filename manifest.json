@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Maa Note Analysis",
-  "version": "1.0",
-  "description": "note.com の投稿統計を分析・可視化するダッシュボード。誰でも使えます。",
+  "version": "2.0",
+  "description": "note.com の投稿統計を分析・可視化するダッシュボード。期間別KPI比較・記事詳細モーダル・ソート機能など搭載。",
 
   "permissions": ["storage", "alarms", "tabs"],
   "host_permissions": [
