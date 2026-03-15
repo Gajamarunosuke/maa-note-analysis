@@ -51,6 +51,26 @@ input:focus{border-color:#6366f1}
   <div class="status" id="status"></div>
 </div>
 
+<!-- PAID 合言葉 -->
+<div class="card">
+  <div class="section-title">PAID機能 解除キー <span class="badge" style="background:#fef9c3;color:#854d0e">PRO</span></div>
+  <p style="font-size:0.78rem;color:#64748b;margin-bottom:16px">
+    note記事に記載の「合言葉」を入力すると、週次/月次CVR推移・Gemini AI分析などのPRO機能が有効になります
+  </p>
+
+  <label for="paidKey">合言葉（PRO解除キー）</label>
+  <input id="paidKey" type="password" placeholder="note記事に記載の合言葉を入力">
+  <div class="hint">
+    <a href="https://note.com/brainy_quince872" target="_blank">note記事</a> を購入すると合言葉を取得できます
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="savePaidBtn">解除キーを保存</button>
+    <button class="btn btn-ghost"   id="clearPaidBtn">削除</button>
+  </div>
+  <div class="status" id="paidStatus"></div>
+</div>
+
 <!-- Gemini AI設定 -->
 <div class="card">
   <div class="section-title">Gemini AI コメント設定 <span class="badge">AI分析</span></div>

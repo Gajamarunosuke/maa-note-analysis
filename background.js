@@ -9,6 +9,16 @@ async function getCreatorId() {
   const r = await chrome.storage.local.get("creatorId");
   return r.creatorId || DEFAULT_CREATOR;
 }
+
+function getISOWeekKey(d) {
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - day);
+  const isoYear = dt.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(isoYear, 0, 1));
+  const week = Math.ceil((((dt - yearStart) / 86400000) + 1) / 7);
+  return `${isoYear}-W${String(week).padStart(2, "0")}`;
+}
 const REFRESH_INTERVAL = 24 * 60; // 1日1回（分単位）
 
 // ─── note.com API フェッチ（ブラウザのCookieを自動使用）───────
@@ -125,12 +135,13 @@ async function fetchSalesStats() {
   try {
     const summary = await fetchJSON("https://note.com/api/v1/stats/sales");
 
-    // 直近3ヶ月分の購入者データを取得
+    // 前年1月〜現在まで取得（前年分も含める）
     const now = new Date();
     const datespans = [];
-    for (let i = 0; i < 3; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      datespans.push(toDatespan(d.getFullYear(), d.getMonth() + 1));
+    let y = now.getFullYear() - 1, m = 1;
+    while (y < now.getFullYear() || (y === now.getFullYear() && m <= now.getMonth() + 1)) {
+      datespans.push(toDatespan(y, m));
+      if (++m > 12) { m = 1; y++; }
     }
 
     const allPurchases = [];
@@ -175,6 +186,119 @@ async function fetchSalesStats() {
   }
 }
 
+// ─── 週次 PV 取得（filter=weekly）────────────────────────────
+// endDate: "YYYY-MM-DD" を指定すると過去週を取得。省略で当週。
+async function fetchWeeklyPVStats(articles, endDate = null) {
+  const pvMap = {};
+  let totalPV = 0;
+  let startDate = null;
+  let page = 1;
+
+  const endParam = endDate ? `&end_date=${endDate}` : "";
+
+  while (true) {
+    try {
+      const data = await fetchJSON(
+        `https://note.com/api/v1/stats/pv?filter=weekly${endParam}&page=${page}&sort=pv`
+      );
+      const d = data?.data ?? {};
+      if (page === 1) {
+        startDate = d.start_date ?? d.start_date_str ?? null;
+        totalPV   = d.total_pv ?? 0;
+      }
+      const noteStats = d.note_stats ?? [];
+      if (!noteStats.length) break;
+      for (const item of noteStats) {
+        if (item.key) pvMap[item.key] = item.read_count ?? 0;
+      }
+      if (d.last_page) break;
+      page++;
+      await sleep(400);
+    } catch (e) {
+      console.error("[note-dash] 週次PV取得エラー:", e);
+      break;
+    }
+  }
+
+  let weekKey = null;
+  if (startDate) {
+    const d = new Date(String(startDate).replace(/\//g, "-"));
+    if (!isNaN(d)) weekKey = getISOWeekKey(d);
+  }
+
+  const paidKeys = new Set(articles.filter(a => a.isPaid).map(a => a.id));
+  const paidViews = Object.entries(pvMap)
+    .filter(([k]) => paidKeys.has(k))
+    .reduce((s, [, v]) => s + v, 0);
+
+  return { weekKey, totalPV, paidViews, artPVMap: pvMap };
+}
+
+// 指定オフセット週の土曜日（end_date）を "YYYY-MM-DD" で返す
+// weekOffset=0: 今週, 1: 先週, 2: 2週前, ...
+function getWeekEndDate(weekOffset = 0) {
+  const today = new Date();
+  const day = today.getDay(); // 0=Sun … 6=Sat
+  const sat = new Date(today);
+  sat.setDate(today.getDate() + (6 - day) - weekOffset * 7);
+  return sat.toISOString().split("T")[0];
+}
+
+// 指定オフセット月の末日を "YYYY-MM-DD" で返す
+// monthOffset=0: 今月末, 1: 先月末, 2: 2ヶ月前末, ...
+function getMonthEndDate(monthOffset = 0) {
+  const now = new Date();
+  // day=0 of next month = last day of target month
+  const d = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 0);
+  return d.toISOString().split("T")[0];
+}
+
+// ─── 月次 PV 取得（filter=monthly）───────────────────────────
+async function fetchMonthlyPVStats(articles, endDate = null) {
+  const pvMap = {};
+  let totalPV = 0;
+  let page = 1;
+
+  const endParam = endDate ? `&end_date=${endDate}` : "";
+
+  while (true) {
+    try {
+      const data = await fetchJSON(
+        `https://note.com/api/v1/stats/pv?filter=monthly${endParam}&page=${page}&sort=pv`
+      );
+      const d = data?.data ?? {};
+      if (page === 1) totalPV = d.total_pv ?? 0;
+      const noteStats = d.note_stats ?? [];
+      if (!noteStats.length) break;
+      for (const item of noteStats) {
+        if (item.key) pvMap[item.key] = item.read_count ?? 0;
+      }
+      if (d.last_page) break;
+      page++;
+      await sleep(400);
+    } catch (e) {
+      console.error("[note-dash] 月次PV取得エラー:", e);
+      break;
+    }
+  }
+
+  // monthKey: endDate の月（未指定=今月）
+  let monthKey;
+  if (endDate) {
+    monthKey = endDate.slice(0, 7); // "YYYY-MM"
+  } else {
+    const now = new Date();
+    monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  const paidKeys = new Set(articles.filter(a => a.isPaid).map(a => a.id));
+  const paidViews = Object.entries(pvMap)
+    .filter(([k]) => paidKeys.has(k))
+    .reduce((s, [, v]) => s + v, 0);
+
+  return { monthKey, totalPV, paidViews, artPVMap: pvMap };
+}
+
 // ─── Gemini API 呼び出し ─────────────────────────────────────
 async function callGeminiAPI(prompt, apiKey) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
@@ -209,10 +333,73 @@ async function refreshStats() {
     ]);
     await fetchReadCounts(articles);
 
+    // 週次PV履歴を蓄積（初回は過去12週をバックフィル）
+    const WEEKLY_HIST_KEY = "note_weekly_pv_v1";
+    let weeklyPVHistory = [];
+    try {
+      const histR = await chrome.storage.local.get(WEEKLY_HIST_KEY);
+      weeklyPVHistory = histR[WEEKLY_HIST_KEY] ?? [];
+
+      // 取得する週のリスト（初回=12週、以降=当週のみ）
+      const weeksToFetch = weeklyPVHistory.length === 0
+        ? Array.from({ length: 12 }, (_, i) => i)   // 0〜11（0=今週）
+        : [0];                                        // 当週のみ更新
+
+      for (const offset of weeksToFetch) {
+        const endDate = getWeekEndDate(offset);
+        const result  = await fetchWeeklyPVStats(articles, offset === 0 ? null : endDate);
+        if (!result.weekKey) { await sleep(300); continue; }
+
+        const entry = { weekKey: result.weekKey, totalPV: result.totalPV, paidViews: result.paidViews, artPVMap: result.artPVMap ?? {} };
+        const idx = weeklyPVHistory.findIndex(h => h.weekKey === entry.weekKey);
+        if (idx >= 0) weeklyPVHistory[idx] = entry;
+        else          weeklyPVHistory.push(entry);
+        console.log(`[note-dash] 週次PV: ${entry.weekKey} 有料PV=${entry.paidViews}`);
+        await sleep(400);
+      }
+
+      weeklyPVHistory.sort((a, b) => a.weekKey.localeCompare(b.weekKey));
+      if (weeklyPVHistory.length > 12) weeklyPVHistory.splice(0, weeklyPVHistory.length - 12);
+      await chrome.storage.local.set({ [WEEKLY_HIST_KEY]: weeklyPVHistory });
+    } catch (e) {
+      console.error("[note-dash] 週次PV履歴エラー:", e);
+    }
+
+    // 月次PV履歴を蓄積（初回は過去12ヶ月をバックフィル）
+    const MONTHLY_HIST_KEY = "note_monthly_pv_v1";
+    let monthlyPVHistory = [];
+    try {
+      const mHistR = await chrome.storage.local.get(MONTHLY_HIST_KEY);
+      monthlyPVHistory = mHistR[MONTHLY_HIST_KEY] ?? [];
+
+      const monthsToFetch = monthlyPVHistory.length === 0
+        ? Array.from({ length: 12 }, (_, i) => i)   // 0〜11（0=今月）
+        : [0];                                        // 今月のみ更新
+
+      for (const offset of monthsToFetch) {
+        const endDate = offset === 0 ? null : getMonthEndDate(offset);
+        const result  = await fetchMonthlyPVStats(articles, endDate);
+        if (!result.monthKey) { await sleep(300); continue; }
+
+        const entry = { monthKey: result.monthKey, totalPV: result.totalPV, paidViews: result.paidViews, artPVMap: result.artPVMap ?? {} };
+        const idx = monthlyPVHistory.findIndex(h => h.monthKey === entry.monthKey);
+        if (idx >= 0) monthlyPVHistory[idx] = entry;
+        else          monthlyPVHistory.push(entry);
+        console.log(`[note-dash] 月次PV: ${entry.monthKey} 有料PV=${entry.paidViews}`);
+        await sleep(400);
+      }
+
+      monthlyPVHistory.sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+      if (monthlyPVHistory.length > 12) monthlyPVHistory.splice(0, monthlyPVHistory.length - 12);
+      await chrome.storage.local.set({ [MONTHLY_HIST_KEY]: monthlyPVHistory });
+    } catch (e) {
+      console.error("[note-dash] 月次PV履歴エラー:", e);
+    }
+
     const totalLikes = articles.reduce((s, a) => s + a.likeCount, 0);
     const hasViews   = articles.some(a => a.readCount >= 0);
 
-    const cache = { articles, creator, sales, updatedAt: Date.now(), hasViews };
+    const cache = { articles, creator, sales, updatedAt: Date.now(), hasViews, weeklyPVHistory, monthlyPVHistory };
     await chrome.storage.local.set({ [CACHE_KEY]: cache });
 
     chrome.action.setBadgeText({ text: "" });

@@ -328,16 +328,16 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
 
     <div class="bubble-card">
       <div class="bubble-title">🎯 記事パフォーマンスマップ</div>
-      <div class="bubble-sub">横軸: 閲覧数（PV）　縦軸: いいね数　バブルサイズ: 売上金額（直近3ヶ月）　中央値で4象限に分類</div>
+      <div class="bubble-sub">横軸: 閲覧数（PV）　縦軸: スキ数　バブルサイズ: 売上金額（直近3ヶ月）　中央値で4象限に分類</div>
       <div class="bubble-wrap" style="height:320px"><canvas id="articleBubble"></canvas></div>
     </div>
 
     <div class="paid-section">
       <div class="section-hd">
-        <div class="section-title">💎 有料記事パフォーマンス（上位10件）<span style="font-size:0.7rem;font-weight:400;color:#9ca3af;margin-left:8px">売上・購入数は直近3ヶ月 / 閲覧数・いいねは累計</span></div>
+        <div class="section-title">💎 有料記事パフォーマンス（上位10件）<span style="font-size:0.7rem;font-weight:400;color:#9ca3af;margin-left:8px">売上・購入数は直近3ヶ月 / 閲覧数・スキは累計</span></div>
         <div class="paid-sort-group">
           <button class="paid-sort-btn" data-psort="readCount">閲覧数</button>
-          <button class="paid-sort-btn" data-psort="likeCount">いいね</button>
+          <button class="paid-sort-btn" data-psort="likeCount">スキ</button>
           <button class="paid-sort-btn active" data-psort="sales">売上</button>
         </div>
       </div>
@@ -346,7 +346,7 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
           <thead>
             <tr>
               <th>#</th><th>記事タイトル</th><th class="col-r">閲覧数</th>
-              <th class="col-r">いいね</th><th class="col-r">売上（累計）</th>
+              <th class="col-r">スキ</th><th class="col-r">売上（累計）</th>
               <th class="col-r">購入数</th><th class="col-r">購入率</th><th class="col-r">ENG率</th>
             </tr>
           </thead>
@@ -406,7 +406,7 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
       <div class="kpi-card">
         <div class="kpi-icon c-indigo">♥</div>
         <div>
-          <div class="kpi-label">総いいね数</div>
+          <div class="kpi-label">総スキ数</div>
           <div class="kpi-value" id="kLikes">—</div>
           <div class="kpi-sub" id="kLikesSub"></div>
         </div>
@@ -437,7 +437,7 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
 
     <div class="charts-grid">
       <div class="chart-card">
-        <div class="chart-title">いいね数 ・ 投稿数推移</div>
+        <div class="chart-title">スキ数 ・ 投稿数推移</div>
         <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
       </div>
       <div class="chart-card">
@@ -451,14 +451,14 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
         <div class="chart-wrap"><canvas id="catChart"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title">カテゴリ別 総いいね数</div>
+        <div class="chart-title">カテゴリ別 総スキ数</div>
         <div class="chart-wrap"><canvas id="catLikeChart"></canvas></div>
       </div>
     </div>
 
     <div class="bubble-card">
       <div class="bubble-title">📐 カテゴリ効率マップ</div>
-      <div class="bubble-sub">横軸: 記事数　縦軸: 平均閲覧数（PV）　バブルサイズ: ENG率（いいね+コメント÷閲覧数）</div>
+      <div class="bubble-sub">横軸: 記事数　縦軸: 平均閲覧数（PV）　バブルサイズ: ENG率（スキ+コメント÷閲覧数）</div>
       <div class="bubble-wrap" style="height:280px"><canvas id="categoryBubble"></canvas></div>
     </div>
 
@@ -466,7 +466,7 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
       <div class="section-title">🏆 TOP 10</div>
       <div class="paid-sort-group">
         <button class="paid-sort-btn" data-top10sort="readCount">閲覧数</button>
-        <button class="paid-sort-btn active" data-top10sort="likeCount">いいね</button>
+        <button class="paid-sort-btn active" data-top10sort="likeCount">スキ</button>
         <button class="paid-sort-btn" data-top10sort="commentCount">コメント</button>
         <button class="paid-sort-btn" data-top10sort="eng">ENG率</button>
       </div>
@@ -501,7 +501,7 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
             <th class="col-r">#</th><th>タイトル</th><th>カテゴリ</th>
             <th>投稿日時</th><th>種別</th>
             <th class="col-r" data-sort="readCount" data-label="閲覧数" style="cursor:pointer;user-select:none">閲覧数 ↕</th>
-            <th class="col-r" data-sort="likeCount" data-label="いいね" style="cursor:pointer;user-select:none">いいね ↕</th>
+            <th class="col-r" data-sort="likeCount" data-label="スキ" style="cursor:pointer;user-select:none">スキ ↕</th>
             <th class="col-r" data-sort="commentCount" data-label="コメント" style="cursor:pointer;user-select:none">コメント ↕</th>
             <th class="col-r" data-sort="eng" data-label="エンゲージメント" style="cursor:pointer;user-select:none">エンゲージメント ↕</th>
           </tr>
@@ -1065,7 +1065,7 @@ function updateCharts() {
 
   resetChart("trendChart", {
     data: { labels, datasets: [
-      { type:"line", label:"いいね数", data:likes,
+      { type:"line", label:"スキ数", data:likes,
         borderColor:"#6366f1", backgroundColor:"rgba(99,102,241,.08)",
         tension:.3, fill:true, pointRadius:2, borderWidth:2, yAxisID:"y" },
       { type:"bar",  label:"投稿数", data:posts,
@@ -1077,7 +1077,7 @@ function updateCharts() {
       scales:{
         x:{ ticks:{ color:"#9ca3af", maxTicksLimit:tickLimit }, grid:{ display:false }},
         y:{ ticks:{ color:"#6366f1" }, grid:{ color:"#f3f4f6" }, position:"left",
-            title:{ display:true, text:"いいね", color:"#6366f1", font:{size:9}}},
+            title:{ display:true, text:"スキ", color:"#6366f1", font:{size:9}}},
         y2:{ ticks:{ color:"#6366f1", stepSize:1, precision:0 }, grid:{ display:false }, position:"right",
              title:{ display:true, text:"投稿数", color:"#6366f1", font:{size:9}}},
       },
@@ -1214,7 +1214,7 @@ function renderArticleBubble(arts, sales) {
         x:{ title:{ display:true, text:"閲覧数（PV）", color:"#6b7280", font:{size:10}},
             ticks:{ color:"#9ca3af", callback: v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v },
             grid:{ color:"#f3f4f6" }},
-        y:{ title:{ display:true, text:"いいね数", color:"#6b7280", font:{size:10}},
+        y:{ title:{ display:true, text:"スキ数", color:"#6b7280", font:{size:10}},
             ticks:{ color:"#9ca3af" }, grid:{ color:"#f3f4f6" }},
       },
     },
@@ -1456,7 +1456,7 @@ function renderArticleModal(articleId) {
   document.getElementById("modalMeta").innerHTML = [
     `📅 ${article.dateStr}`,
     `👁 閲覧数 ${fmt(article.readCount)}`,
-    `♥ いいね ${fmt(article.likeCount)}`,
+    `♥ スキ ${fmt(article.likeCount)}`,
     `💬 コメント ${article.commentCount}`,
     `📊 ENG率 ${artEng}`,
     article.isPaid ? `<span style="color:#059669;font-weight:700">💰 ${fmtYen(article.isPaid ? article.price || 0 : 0)} 記事</span>` : `<span style="color:#10b981">🆓 無料記事</span>`,
@@ -1718,7 +1718,7 @@ function switchTab(tabId) {
 // ─── CSV エクスポート ─────────────────────────────────────────
 function exportCSV() {
   if (!allArticles.length) return;
-  const header = ["#","タイトル","カテゴリ","投稿日時","種別","閲覧数","いいね","コメント","ENG率"];
+  const header = ["#","タイトル","カテゴリ","投稿日時","種別","閲覧数","スキ","コメント","ENG率"];
   const rows = allArticles.map((a, i) => {
     const artEng = (a.readCount > 0) ? ((a.likeCount + a.commentCount) / a.readCount * 100).toFixed(2) + "%" : "";
     return [i+1, `"${a.title.replace(/"/g,'""')}"`, a.category, fmtDate(a.publishAt),
@@ -1740,7 +1740,7 @@ function showDemoGeminiOutput() {
 提案：「高配当株」「NISA 初心者」「積立投資 シミュレーション」をLvシリーズタイトルに追加する
 
 ②無料→有料導線 スコア：6/10
-課題：いいね上位の無料記事（新NISA・高配当株）から有料記事へのリンクがない
+課題：スキ上位の無料記事（新NISA・高配当株）から有料記事へのリンクがない
 提案：人気無料記事末尾にLv1〜Lv3への内部リンクを追加し購入率2倍を狙う
 
 ③価格・構成 スコア：7/10
@@ -1831,7 +1831,7 @@ function render(data) {
   document.getElementById("kLikes").textContent        = fmt(totalLikes);
   document.getElementById("kLikesSub").textContent     = `平均 ${avgLikes} / 記事`;
   document.getElementById("kEng").textContent          = engRate;
-  document.getElementById("kEngSub").textContent       = "(いいね+コメント)÷閲覧数";
+  document.getElementById("kEngSub").textContent       = "(スキ+コメント)÷閲覧数";
   document.getElementById("kArticles").textContent     = total;
   document.getElementById("kArticlesSub").textContent  = `有料 ${arts.filter(a=>a.isPaid).length} / 無料 ${arts.filter(a=>!a.isPaid).length}`;
   document.getElementById("kComments").textContent     = fmt(totalCmt);
@@ -1855,7 +1855,7 @@ function render(data) {
   });
   resetChart("catLikeChart", {
     type:"bar",
-    data:{ labels:catLabels, datasets:[{ label:"いいね数",
+    data:{ labels:catLabels, datasets:[{ label:"スキ数",
       data:catLabels.map(k => catData[k].likes), backgroundColor:catCols, borderRadius:6 }]},
     options:{ responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{ display:false }},
@@ -1874,7 +1874,7 @@ function render(data) {
   updateKPIDeltas(chartGran);
 
   document.getElementById("footerText").textContent =
-    `Maa Note Analysis DEMO — ${total}記事 · いいね ${totalLikes.toLocaleString()}`;
+    `Maa Note Analysis DEMO — ${total}記事 · スキ ${totalLikes.toLocaleString()}`;
 }
 
 // ─── イベントリスナー & 起動 ──────────────────────────────────

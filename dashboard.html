@@ -65,6 +65,23 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
 .funnel-rate{flex-shrink:0;text-align:center;padding:0 8px}
 .funnel-rate-val{font-size:1.1rem;font-weight:700;color:#6366f1}
 .funnel-rate-label{font-size:0.6rem;color:#9ca3af}
+.funnel-benchmark{margin-top:16px;padding-top:14px;border-top:1px solid #f3f4f6;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.benchmark-label{font-size:0.67rem;color:#9ca3af;font-weight:500;white-space:nowrap}
+.benchmark-tier{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:0.67rem;font-weight:600;white-space:nowrap}
+.benchmark-tier.t0{background:#fef2f2;color:#b91c1c}
+.benchmark-tier.t1{background:#fffbeb;color:#92400e}
+.benchmark-tier.t2{background:#f0fdf4;color:#166534}
+.benchmark-tier.t3{background:#eff6ff;color:#1d4ed8}
+.benchmark-arrow{font-size:0.7rem;color:#d1d5db;flex-shrink:0}
+.benchmark-step{font-size:0.67rem;font-weight:500;color:#d1d5db;display:inline-flex;flex-direction:column;align-items:center;gap:1px;line-height:1.3;padding:3px 8px;border-radius:8px;transition:all .2s}
+.benchmark-step .bs-sub{font-size:0.58rem;font-weight:400;opacity:.7}
+.benchmark-step.passed{color:#9ca3af}
+.benchmark-step.passed::before{content:"✔ "}
+.benchmark-step.current.t0{background:#fef2f2;color:#b91c1c;font-weight:700;border:1.5px solid #fca5a5}
+.benchmark-step.current.t1{background:#fffbeb;color:#92400e;font-weight:700;border:1.5px solid #fcd34d}
+.benchmark-step.current.t2{background:#f0fdf4;color:#166534;font-weight:700;border:1.5px solid #6ee7b7}
+.benchmark-step.current.t3{background:#eff6ff;color:#1d4ed8;font-weight:700;border:1.5px solid #93c5fd}
+.benchmark-step.current::before{content:"▶ "}
 
 /* ── Notice ─────────────────────────────────────────── */
 #noViewsNotice{display:none;align-items:center;gap:14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 18px;margin-bottom:22px;font-size:0.8rem;color:#1e40af;flex-wrap:wrap}
@@ -326,7 +343,7 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
         <div class="funnel-step">
           <div class="funnel-step-num" id="fPurchases">—</div>
           <div class="funnel-step-label">購入数</div>
-          <div class="funnel-step-sub">直近3ヶ月累計</div>
+          <div class="funnel-step-sub">今月集計</div>
         </div>
         <div class="funnel-rate">
           <div class="funnel-rate-val" id="fPurchaseRate">—</div>
@@ -338,6 +355,16 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
           <div class="funnel-step-label">平均単価</div>
           <div class="funnel-step-sub" id="fAvgPriceSub"></div>
         </div>
+      </div>
+      <div class="funnel-benchmark" id="funnelBenchmark" style="display:none">
+        <span class="benchmark-label">購入率ランク：</span>
+        <span class="benchmark-step" id="bStep0">○ 未最適化<span class="bs-sub">0.1%以下</span></span>
+        <span class="benchmark-arrow">→</span>
+        <span class="benchmark-step" id="bStep1">○ 一般層<span class="bs-sub">0.1〜1.0%</span></span>
+        <span class="benchmark-arrow">→</span>
+        <span class="benchmark-step" id="bStep2">○ 上位層<span class="bs-sub">1.0〜3.0%</span></span>
+        <span class="benchmark-arrow">→</span>
+        <span class="benchmark-step" id="bStep3">○ トップ勢<span class="bs-sub">3.0%超</span></span>
       </div>
     </div>
 
@@ -362,20 +389,38 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
       </div>
     </div>
 
+    <!-- 週次購入率トレンド -->
+    <div class="chart-card" style="margin-bottom:22px">
+      <div class="chart-title">📊 週次購入率トレンド　棒:有料記事PV ／ 線:購入率(%)</div>
+      <div id="weeklyCVRNotice" style="display:none;padding:12px 16px;background:#f0f9ff;border-radius:8px;font-size:0.8rem;color:#0369a1;margin-bottom:8px">
+        📡 データ蓄積中です。毎週の更新ごとに週次購入率が記録されます（2週分以上で表示）
+      </div>
+      <div class="chart-wrap"><canvas id="weeklyCVRChart"></canvas></div>
+    </div>
+
+    <!-- 月次購入率トレンド -->
+    <div class="chart-card" style="margin-bottom:22px">
+      <div class="chart-title">📅 月次購入率トレンド　棒:PV(28日) ／ 線:購入率(%)</div>
+      <div id="monthlyCVRNotice" style="display:none;padding:12px 16px;background:#faf5ff;border-radius:8px;font-size:0.8rem;color:#7c3aed;margin-bottom:8px">
+        📡 データ蓄積中です。更新ごとに月次購入率が記録されます（2ヶ月分以上で表示）
+      </div>
+      <div class="chart-wrap"><canvas id="monthlyCVRChart"></canvas></div>
+    </div>
+
     <!-- 記事パフォーマンスマップ（バブル） -->
     <div class="bubble-card">
       <div class="bubble-title">🎯 記事パフォーマンスマップ</div>
-      <div class="bubble-sub">横軸: 閲覧数（PV）　縦軸: いいね数　バブルサイズ: 売上金額（直近3ヶ月）　中央値で4象限に分類</div>
+      <div class="bubble-sub">横軸: 閲覧数（PV）　縦軸: スキ数　バブルサイズ: 売上金額（直近3ヶ月）　中央値で4象限に分類</div>
       <div class="bubble-wrap" style="height:320px"><canvas id="articleBubble"></canvas></div>
     </div>
 
     <!-- ③ 有料記事パフォーマンス -->
     <div class="paid-section">
       <div class="section-hd">
-        <div class="section-title">💎 有料記事パフォーマンス（上位10件）<span style="font-size:0.7rem;font-weight:400;color:#9ca3af;margin-left:8px">売上・購入数は直近3ヶ月 / 閲覧数・いいねは累計</span></div>
+        <div class="section-title">💎 有料記事パフォーマンス（上位10件）<span style="font-size:0.7rem;font-weight:400;color:#9ca3af;margin-left:8px">売上・購入数は直近3ヶ月 / 閲覧数・スキは累計</span></div>
         <div class="paid-sort-group">
           <button class="paid-sort-btn" data-psort="readCount">閲覧数</button>
-          <button class="paid-sort-btn" data-psort="likeCount">いいね</button>
+          <button class="paid-sort-btn" data-psort="likeCount">スキ</button>
           <button class="paid-sort-btn active" data-psort="sales">売上</button>
         </div>
       </div>
@@ -386,7 +431,8 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
               <th>#</th>
               <th>記事タイトル</th>
               <th class="col-r">閲覧数</th>
-              <th class="col-r">いいね</th>
+              <th class="col-r">今週PV</th>
+              <th class="col-r">スキ</th>
               <th class="col-r">売上（累計）</th>
               <th class="col-r">購入数</th>
               <th class="col-r">購入率</th>
@@ -408,6 +454,19 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
       </div>
       <div class="ai-output" id="aiOutput">
         <span class="ai-placeholder">「分析する」を押すと、売上データをもとにGeminiが明日から使える具体的アドバイスを提示します</span>
+      </div>
+    </div>
+
+    <!-- ⑤ Gemini 深掘り分析 -->
+    <div class="ai-section">
+      <div class="ai-header">
+        <div class="ai-title">🔬 深掘り分析（CVR要因・スキvs売上・初速型/ロングテール）</div>
+        <div class="ai-controls">
+          <button class="btn-ai" id="aiDeepBtn">深掘り分析する</button>
+        </div>
+      </div>
+      <div class="ai-output" id="aiDeepOutput">
+        <span class="ai-placeholder">月次CVRトレンド・スキvs売上相関・初速型/ロングテール分類をGeminiが分析します（PRO機能）</span>
       </div>
     </div>
 
@@ -460,7 +519,7 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
       <div class="kpi-card">
         <div class="kpi-icon c-indigo">♥</div>
         <div>
-          <div class="kpi-label">総いいね数</div>
+          <div class="kpi-label">総スキ数</div>
           <div class="kpi-value" id="kLikes">—</div>
           <div class="kpi-sub"   id="kLikesSub"></div>
         </div>
@@ -494,7 +553,7 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
     <!-- ⑧ Charts -->
     <div class="charts-grid">
       <div class="chart-card">
-        <div class="chart-title">いいね数 ・ 投稿数推移</div>
+        <div class="chart-title">スキ数 ・ 投稿数推移</div>
         <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
       </div>
       <div class="chart-card">
@@ -508,7 +567,7 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
         <div class="chart-wrap"><canvas id="catChart"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title">カテゴリ別 総いいね数</div>
+        <div class="chart-title">カテゴリ別 総スキ数</div>
         <div class="chart-wrap"><canvas id="catLikeChart"></canvas></div>
       </div>
     </div>
@@ -516,7 +575,7 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
     <!-- カテゴリ効率マップ（バブル） -->
     <div class="bubble-card">
       <div class="bubble-title">📐 カテゴリ効率マップ</div>
-      <div class="bubble-sub">横軸: 記事数　縦軸: 平均閲覧数（PV）　バブルサイズ: ENG率（いいね+コメント÷閲覧数）　少ない記事で高PVなカテゴリ = 当たりジャンル</div>
+      <div class="bubble-sub">横軸: 記事数　縦軸: 平均閲覧数（PV）　バブルサイズ: ENG率（スキ+コメント÷閲覧数）　少ない記事で高PVなカテゴリ = 当たりジャンル</div>
       <div class="bubble-wrap" style="height:280px"><canvas id="categoryBubble"></canvas></div>
     </div>
 
@@ -525,7 +584,7 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
       <div class="section-title">🏆 TOP 10</div>
       <div class="paid-sort-group">
         <button class="paid-sort-btn" data-top10sort="readCount">閲覧数</button>
-        <button class="paid-sort-btn active" data-top10sort="likeCount">いいね</button>
+        <button class="paid-sort-btn active" data-top10sort="likeCount">スキ</button>
         <button class="paid-sort-btn" data-top10sort="commentCount">コメント</button>
         <button class="paid-sort-btn" data-top10sort="engRate">ENG率</button>
       </div>
@@ -576,7 +635,7 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
             <th>投稿日時</th>
             <th>種別</th>
             <th class="col-r" data-sort="readCount"    data-label="閲覧数">閲覧数 ⇅</th>
-            <th class="col-r" data-sort="likeCount"    data-label="いいね">いいね ⇅</th>
+            <th class="col-r" data-sort="likeCount"    data-label="スキ">スキ ⇅</th>
             <th class="col-r" data-sort="commentCount" data-label="コメント">コメント ⇅</th>
             <th class="col-r" data-sort="engRate"      data-label="エンゲージメント">エンゲージメント ⇅</th>
           </tr>
@@ -613,6 +672,12 @@ body{font-family:"Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;background:#
       <canvas id="modalChart"></canvas>
     </div>
     <div class="art-modal-nodata" id="modalNoData" style="display:none">購入データがありません</div>
+    <div id="modalWeeklyPVLabel" style="display:none;margin-top:18px;font-size:0.82rem;font-weight:600;color:#374151">
+      📊 週次閲覧推移（直近12週）
+    </div>
+    <div style="height:140px;position:relative;margin-top:6px" id="modalWeeklyPVWrap" style="display:none">
+      <canvas id="modalWeeklyPVChart"></canvas>
+    </div>
   </div>
 </div>
 

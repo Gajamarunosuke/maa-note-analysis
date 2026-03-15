@@ -31,6 +31,10 @@ let currentData       = null;
 const charts          = {};
 let modalGran         = "week";
 let currentModalArticleId = null;
+let isPaid            = false; // PRO合言葉が設定されているか
+
+// PRO解除キーのSHA-256ハッシュ（平文キーはここに置かない）
+const PAID_HASH = "ba4ba2d8e388c4247a7ff7bcd4d86bc729f9312426008561cb08645cb8796e7d";
 
 // ─── カテゴリ判定 ────────────────────────────────────────────
 function categorize(title) {
@@ -65,6 +69,17 @@ function timeAgo(ts) {
   return h < 24 ? `${h}時間前` : `${Math.floor(h / 24)}日前`;
 }
 function pct(n) { return n == null || n < 0 ? "—" : n.toFixed(2) + "%"; }
+
+// 購入率の層に応じたインラインスタイルを返す
+function cvrStyle(rateStr) {
+  if (rateStr === "—") return "color:#d1d5db";
+  const v = parseFloat(rateStr);
+  if (isNaN(v))    return "color:#d1d5db";
+  if (v < 0.1)     return "color:#b91c1c;font-weight:600";          // 未最適化
+  if (v < 1.0)     return "color:#92400e;font-weight:600";          // 一般層
+  if (v < 3.0)     return "color:#166534;font-weight:700";          // 上位層
+  return             "color:#1d4ed8;font-weight:700";               // トップ勢
+}
 
 // ─── 売上データ抽出ヘルパー ──────────────────────────────────
 function extractSalesMonth(sales, year, month) {
@@ -187,13 +202,29 @@ async function renderSalesSection(sales) {
 
 // ─── ファネル レンダリング ────────────────────────────────────
 async function renderFunnel(arts, sales) {
-  const paidArts  = arts.filter(a => a.isPaid);
-  const totalViews = arts.filter(a => a.readCount >= 0).reduce((s, a) => s + a.readCount, 0);
-  const paidViews  = paidArts.filter(a => a.readCount >= 0).reduce((s, a) => s + a.readCount, 0);
+  const paidArts = arts.filter(a => a.isPaid);
 
-  // 購入数・売上: 直近3ヶ月の累計（purchasers APIから集計済み）
-  const purchases  = sales?.details?.reduce((s, d) => s + (d.count  ?? 0), 0) ?? 0;
-  const totalSales = sales?.details?.reduce((s, d) => s + (d.sales  ?? 0), 0) ?? 0;
+  // 今月の購入数・売上・有料PV・総PV（全て今月で統一）
+  const now = new Date();
+  const thisYear  = now.getFullYear();
+  const thisMonth = now.getMonth(); // 0-indexed
+
+  const monthPurchases = (sales?.purchases ?? []).filter(p => {
+    if (p.is_refund) return false;
+    const d = new Date(p.purchased_at ?? p.created_at ?? "");
+    return d.getFullYear() === thisYear && d.getMonth() === thisMonth;
+  });
+  const purchases  = monthPurchases.length;
+  const totalSales = monthPurchases.reduce((s, p) => s + (p.price ?? 0), 0);
+
+  // 今月の有料PV・総PV: monthlyPVHistoryの当月エントリを優先
+  const monthKey = `${thisYear}-${String(thisMonth + 1).padStart(2, "0")}`;
+  const monthHistory = currentData?.monthlyPVHistory ?? [];
+  const thisMonthEntry = monthHistory.find(h => h.monthKey === monthKey);
+  const paidViews  = thisMonthEntry?.paidViews
+    ?? paidArts.filter(a => a.readCount >= 0).reduce((s, a) => s + a.readCount, 0);
+  const totalViews = thisMonthEntry?.totalPV
+    ?? arts.filter(a => a.readCount >= 0).reduce((s, a) => s + a.readCount, 0);
 
   document.getElementById("fTotalViews").textContent = fmt(totalViews);
   document.getElementById("fPaidViews").textContent  = paidViews > 0 ? fmt(paidViews) : "—";
@@ -205,7 +236,19 @@ async function renderFunnel(arts, sales) {
 
   document.getElementById("fPurchases").textContent = purchases > 0 ? `${purchases}件` : "—";
   if (paidViews > 0 && purchases > 0) {
-    document.getElementById("fPurchaseRate").textContent = pct(purchases / paidViews * 100);
+    const cvr = purchases / paidViews * 100;
+    document.getElementById("fPurchaseRate").textContent = pct(cvr);
+
+    // ベンチマーク ステップ表示
+    const tierIdx = cvr < 0.1 ? 0 : cvr < 1.0 ? 1 : cvr < 3.0 ? 2 : 3;
+    const tierClasses = ["t0","t1","t2","t3"];
+    for (let i = 0; i < 4; i++) {
+      const el = document.getElementById(`bStep${i}`);
+      el.className = "benchmark-step";
+      if (i < tierIdx)      el.classList.add("passed");
+      else if (i === tierIdx) el.classList.add("current", tierClasses[i]);
+    }
+    document.getElementById("funnelBenchmark").style.display = "flex";
   }
 
   if (purchases > 0 && totalSales > 0) {
@@ -216,12 +259,29 @@ async function renderFunnel(arts, sales) {
   }
 }
 
+
 // ─── 有料記事テーブル レンダリング ──────────────────────────
 function renderPaidTable(arts, sales) {
+  if (!isPaid) {
+    document.getElementById("paidTableBody").innerHTML =
+      `<tr><td colspan="9" style="text-align:center;padding:32px;color:#854d0e;background:#fef9c3">
+        🔒 <strong>PRO機能</strong> — <a href="#" onclick="chrome.runtime.openOptionsPage();return false;" style="color:#6366f1">設定画面</a>で合言葉を入力してください
+      </td></tr>`;
+    return;
+  }
   // 記事別売上詳細マップを作る
   const detailMap = {};
   for (const d of (sales?.details ?? [])) {
     if (d.key) detailMap[d.key] = d;
+  }
+
+  // 週次PV（直近2週）
+  const weekHistory = currentData?.weeklyPVHistory ?? [];
+  const latestWeek  = weekHistory[weekHistory.length - 1];
+  const prevWeek    = weekHistory[weekHistory.length - 2];
+  function getWeeklyPV(id)  { return latestWeek?.artPVMap?.[id] ?? 0; }
+  function isEvergreen(id)  {
+    return (latestWeek?.artPVMap?.[id] ?? 0) > 0 && (prevWeek?.artPVMap?.[id] ?? 0) > 0;
   }
 
   // 各有料記事にsales値を付与してからソート
@@ -250,18 +310,21 @@ function renderPaidTable(arts, sales) {
   const rows = top10.map((a, i) => {
     const artRate = (a.readCount > 0 && a.artPurchase != null)
       ? pct(a.artPurchase / a.readCount * 100) : "—";
-    const barW = a.readCount >= 0 ? Math.max(a.readCount / maxViews * 60, 2) : 0;
-
+    const barW   = a.readCount >= 0 ? Math.max(a.readCount / maxViews * 60, 2) : 0;
+    const wPV    = isPaid ? getWeeklyPV(a.id) : null;
+    const evg    = isPaid && isEvergreen(a.id)
+      ? `<span title="エバーグリーン：2週連続閲覧あり" style="margin-left:3px;font-size:.75rem">🌿</span>` : "";
     return `<tr data-artid="${a.id}" title="クリックで詳細を表示">
       <td class="col-sm col-r" style="color:#9ca3af">${i+1}</td>
       <td><span class="art-link" style="cursor:pointer">${a.title.slice(0,55)}${a.title.length>55?"…":""}</span></td>
       <td class="col-r col-sm n-view">
         <span class="purchase-bar" style="width:${barW}px"></span>${a.readCount >= 0 ? fmt(a.readCount) : "—"}
       </td>
+      <td class="col-r col-sm" style="color:#0ea5e9">${isPaid ? (wPV > 0 ? fmt(wPV) : "—") : "🔒"}${evg}</td>
       <td class="col-r col-sm n-like">♥ ${fmt(a.likeCount)}</td>
       <td class="col-r col-sm" style="color:#059669;font-weight:600">${a.artSales >= 0 ? fmtYen(a.artSales) : "—"}</td>
       <td class="col-r col-sm" style="color:#6366f1;font-weight:600">${a.artPurchase != null ? `${a.artPurchase}件` : "—"}</td>
-      <td class="col-r col-sm" style="color:#8b5cf6">${artRate}</td>
+      <td class="col-r col-sm" style="${cvrStyle(artRate)}">${artRate}</td>
       <td class="col-r col-sm" style="color:#f59e0b">${a.readCount > 0 ? pct((a.likeCount + a.commentCount) / a.readCount * 100) : "—"}</td>
     </tr>`;
   }).join("");
@@ -298,14 +361,14 @@ function buildGeminiPrompt(data) {
   const paidLines = paidList.map(a => {
     const rate = (a.readCount > 0 && a.artCount > 0)
       ? (a.artCount / a.readCount * 100).toFixed(1) + "%" : "—";
-    return `  ・「${[...a.title].slice(0,28).join("")}」 ¥${a.price} 閲覧${a.readCount >= 0 ? a.readCount : "不明"} いいね${a.likeCount} 購入${a.artCount}件 売上${a.artSales >= 0 ? fmtYen(a.artSales) : "—"} 転換率${rate}`;
+    return `  ・「${[...a.title].slice(0,28).join("")}」 ¥${a.price} 閲覧${a.readCount >= 0 ? a.readCount : "不明"} スキ${a.likeCount} 購入${a.artCount}件 売上${a.artSales >= 0 ? fmtYen(a.artSales) : "—"} 転換率${rate}`;
   }).join("\n");
 
-  // 無料記事：いいね上位10件（購読者が何に反応するか）
+  // 無料記事：スキ上位10件（購読者が何に反応するか）
   const freeTop = [...free]
     .sort((a, b) => b.likeCount - a.likeCount)
     .slice(0, 10)
-    .map(a => `  ・「${[...a.title].slice(0,28).join("")}」 いいね${a.likeCount} 閲覧${a.readCount >= 0 ? a.readCount : "不明"}`)
+    .map(a => `  ・「${[...a.title].slice(0,28).join("")}」 スキ${a.likeCount} 閲覧${a.readCount >= 0 ? a.readCount : "不明"}`)
     .join("\n");
 
   const now = new Date();
@@ -317,12 +380,12 @@ function buildGeminiPrompt(data) {
 ・名前: ${cr.nickname ?? "不明"}
 ・フォロワー: ${cr.followerCount >= 0 ? cr.followerCount.toLocaleString() : "不明"}人
 ・記事数: ${arts.length}件（有料${paid.length}件 / 無料${free.length}件）
-・総閲覧: ${totalViews > 0 ? totalViews.toLocaleString() : "不明"} / 総いいね: ${totalLikes.toLocaleString()}
+・総閲覧: ${totalViews > 0 ? totalViews.toLocaleString() : "不明"} / 総スキ: ${totalLikes.toLocaleString()}
 
 【有料記事一覧（直近3ヶ月売上順・全${paid.length}件）】
 ${paidLines || "  データなし"}
 
-【無料記事いいね上位10件（読者の反応が高いコンテンツ）】
+【無料記事スキ上位10件（読者の反応が高いコンテンツ）】
 ${freeTop || "  データなし"}
 
 ─────────────────────────────────────
@@ -361,7 +424,7 @@ function renderSalesKPIsByGran(sales, gran) {
     day:   { curr: "今日の売上",  comp: "前日比",  purchaseLbl: "今日の購入件数"  },
     week:  { curr: "今週の売上",  comp: "前週比",  purchaseLbl: "今週の購入件数"  },
     month: { curr: "今月の売上",  comp: "前月比",  purchaseLbl: "今月の購入件数"  },
-    all:   { curr: "今月の売上",  comp: "前月比",  purchaseLbl: "今月の購入件数"  },
+    all:   { curr: "全期間の売上", comp: "—",       purchaseLbl: "全期間の購入件数" },
   };
   const lbl = LABELS[gran] ?? LABELS.month;
 
@@ -372,13 +435,32 @@ function renderSalesKPIsByGran(sales, gran) {
   if (labelMoM)      labelMoM.textContent      = lbl.comp;
   if (labelPurchase) labelPurchase.textContent = lbl.purchaseLbl;
 
-  // "all" は既存の月次表示のまま
-  if (gran === "all") return;
+  // "all" は今年の累計を表示
+  if (gran === "all") {
+    const yearPurchases = purchases.filter(p => {
+      if (p.is_refund) return false;
+      const d = new Date(p.purchased_at ?? p.created_at ?? "");
+      return d.getFullYear() === now.getFullYear();
+    });
+    const yearAmount = yearPurchases.reduce((s, p) => s + (p.price ?? 0), 0);
+    const yearCount  = yearPurchases.length;
+    document.getElementById("sCurrentSales").textContent    = fmtYen(yearAmount);
+    document.getElementById("sCurrentSalesSub").textContent = `${now.getFullYear()}年 累計`;
+    document.getElementById("sMoM").textContent             = "—";
+    document.getElementById("sMoM").style.color             = "";
+    document.getElementById("sMoMSub").textContent          = "";
+    document.getElementById("sMoMSub").className            = "sales-kpi-sub neutral";
+    document.getElementById("sPurchaseCount").textContent   = `${yearCount}件`;
+    document.getElementById("sPurchaseSub").textContent     =
+      yearCount > 0 && yearAmount > 0
+        ? `平均 ${fmtYen(Math.round(yearAmount / yearCount))}/件` : "";
+    return;
+  }
 
   function pad(n) { return String(n).padStart(2, "0"); }
   function getKey(d) {
     if (gran === "day")  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-    if (gran === "week") return `${d.getFullYear()}-W${pad(getISOWeek(d))}`;
+    if (gran === "week") return getISOWeekKey(d);
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
   }
 
@@ -440,6 +522,16 @@ function getISOWeek(d) {
   const yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
   return Math.ceil((((dt - yearStart) / 86400000) + 1) / 7);
 }
+// ISO週のキーを返す（年末年始のISO年ズレを正しく処理）
+function getISOWeekKey(d) {
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - day);
+  const isoYear  = dt.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(isoYear, 0, 1));
+  const week = Math.ceil((((dt - yearStart) / 86400000) + 1) / 7);
+  return `${isoYear}-W${String(week).padStart(2, "0")}`;
+}
 
 function aggregatePurchases(purchases, gran) {
   const map   = {};
@@ -456,7 +548,7 @@ function aggregatePurchases(purchases, gran) {
     if (gran === "day") {
       key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
     } else if (gran === "week") {
-      key = `${d.getFullYear()}-W${String(getISOWeek(d)).padStart(2,"0")}`;
+      key = getISOWeekKey(d);
     } else {
       key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
     }
@@ -478,7 +570,7 @@ function aggregatePurchases(purchases, gran) {
     const cur = new Date(since); cur.setHours(0,0,0,0);
     const end = new Date(today); end.setHours(0,0,0,0);
     while (cur <= end) {
-      const key = `${cur.getFullYear()}-W${String(getISOWeek(cur)).padStart(2,"0")}`;
+      const key = getISOWeekKey(cur);
       if (!map[key]) map[key] = { amount: 0, count: 0 };
       cur.setDate(cur.getDate() + 7);
     }
@@ -552,6 +644,241 @@ function updateSalesCharts() {
   });
 }
 
+// ─── PRO ロック表示 ──────────────────────────────────────────
+function showProLock(canvasId, wrapId) {
+  const wrap = wrapId ? document.getElementById(wrapId) : null;
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const parent = wrap ?? canvas.parentElement;
+  // 既にロック表示があれば再描画しない
+  if (parent.querySelector(".pro-lock-notice")) return;
+  if (canvas) canvas.style.display = "none";
+  const div = document.createElement("div");
+  div.className = "pro-lock-notice";
+  div.style.cssText = "padding:24px;text-align:center;color:#854d0e;background:#fef9c3;border-radius:10px;font-size:0.85rem;border:1px dashed #fde68a";
+  div.innerHTML = `🔒 <strong>PRO機能</strong> — <a href="#" onclick="chrome.runtime.openOptionsPage();return false;" style="color:#6366f1">設定画面</a>で合言葉を入力すると表示されます`;
+  parent.appendChild(div);
+}
+
+// ─── 週次購入率トレンドチャート ──────────────────────────────
+function renderWeeklyCVRChart() {
+  if (!isPaid) { showProLock("weeklyCVRChart"); return; }
+  const history = currentData?.weeklyPVHistory ?? [];
+  const notice  = document.getElementById("weeklyCVRNotice");
+
+  if (history.length < 2) {
+    if (notice) notice.style.display = "block";
+    return;
+  }
+  if (notice) notice.style.display = "none";
+
+  // 週ごとの購入件数を集計（有料記事への purchases のみ）
+  const purchases = currentData?.sales?.purchases ?? [];
+  const purchaseByWeek = {};
+  for (const p of purchases) {
+    if (p.is_refund) continue;
+    const d = new Date(p.purchased_at ?? p.created_at ?? "");
+    if (isNaN(d)) continue;
+    const key = getISOWeekKey(d);
+    purchaseByWeek[key] = (purchaseByWeek[key] ?? 0) + 1;
+  }
+
+  const labels  = history.map(h => h.weekKey);
+  const cvrData = history.map(h => {
+    if (!h.paidViews || h.paidViews <= 0) return null;
+    const cnt = purchaseByWeek[h.weekKey] ?? 0;
+    return parseFloat((cnt / h.paidViews * 100).toFixed(3));
+  });
+  const paidPVData = history.map(h => h.paidViews ?? 0);
+
+  // 4週移動平均
+  const ma4 = cvrData.map((_, i) => {
+    const w = cvrData.slice(Math.max(0, i - 3), i + 1).filter(v => v != null);
+    if (w.length < 2) return null;
+    return parseFloat((w.reduce((s, v) => s + v, 0) / w.length).toFixed(3));
+  });
+
+  // 年次購入率（年ごとに購入数÷その年の有料PV合計）
+  const purchasesByYear = {};
+  for (const p of purchases) {
+    if (p.is_refund) continue;
+    const d = new Date(p.purchased_at ?? p.created_at ?? "");
+    if (!isNaN(d)) { const yr = d.getFullYear(); purchasesByYear[yr] = (purchasesByYear[yr] ?? 0) + 1; }
+  }
+  const paidPVByYear = {};
+  for (const h of history) {
+    const yr = parseInt(h.weekKey.split("-W")[0]);
+    paidPVByYear[yr] = (paidPVByYear[yr] ?? 0) + (h.paidViews ?? 0);
+  }
+  const yearCVR = {};
+  for (const yr of Object.keys(paidPVByYear)) {
+    const pv = paidPVByYear[yr], cnt = purchasesByYear[yr] ?? 0;
+    if (pv > 0) yearCVR[yr] = parseFloat((cnt / pv * 100).toFixed(3));
+  }
+  const allTimeLine = labels.map(k => yearCVR[parseInt(k.split("-W")[0])] ?? null);
+
+  // 今月CVR（ファネルの購入率と同じ値）
+  const nowM = new Date();
+  const thisMonthKey = `${nowM.getFullYear()}-${String(nowM.getMonth()+1).padStart(2,"0")}`;
+  const thisMonthEntry = (currentData?.monthlyPVHistory ?? []).find(h => h.monthKey === thisMonthKey);
+  // 今月の購入数はpurchasesから当月フィルタ
+  const nowYear = nowM.getFullYear(), nowMonth = nowM.getMonth();
+  const thisMonthBuys = (currentData?.sales?.purchases ?? [])
+    .filter(p => { if (p.is_refund) return false;
+      const d = new Date(p.purchased_at ?? p.created_at ?? "");
+      return d.getFullYear() === nowYear && d.getMonth() === nowMonth; }).length;
+  const thisMonthPV = thisMonthEntry?.paidViews ?? 0;
+  const thisMonthCVR = thisMonthPV > 0
+    ? parseFloat((thisMonthBuys / thisMonthPV * 100).toFixed(3)) : null;
+  // 今月に含まれる週のみ表示（ISO週の月曜日が今月かどうかで判定）
+  const thisMonthLine = thisMonthCVR != null ? labels.map(k => {
+    const [yr, wn] = k.split("-W").map(Number);
+    const jan4 = new Date(Date.UTC(yr, 0, 4));
+    const dow  = jan4.getUTCDay() || 7; // 1=Mon..7=Sun
+    const w1Mon = new Date(jan4.getTime() - (dow - 1) * 86400000);
+    const weekMon = new Date(w1Mon.getTime() + (wn - 1) * 7 * 86400000);
+    return weekMon.getUTCFullYear() === nowYear && weekMon.getUTCMonth() === nowMonth
+      ? thisMonthCVR : null;
+  }) : [];
+
+  resetChart("weeklyCVRChart", {
+    data: { labels, datasets: [
+      { type: "line", label: "週次購入率(%)", data: cvrData,
+        borderColor: "#6366f1", backgroundColor: "rgba(99,102,241,.08)",
+        tension: .3, fill: true, pointRadius: 4, borderWidth: 2,
+        spanGaps: true, yAxisID: "y" },
+      { type: "line", label: "4週移動平均(%)", data: ma4,
+        borderColor: "#f59e0b", backgroundColor: "transparent",
+        borderWidth: 2, borderDash: [6, 3], pointRadius: 0,
+        spanGaps: true, yAxisID: "y", tension: 0 },
+      ...(allTimeLine.some(v => v != null) ? [{ type: "line", label: "年次購入率",
+        data: allTimeLine, borderColor: "#94a3b8", backgroundColor: "transparent",
+        borderWidth: 1.5, borderDash: [3, 3], pointRadius: 0,
+        spanGaps: false, yAxisID: "y", tension: 0 }] : []),
+      ...(thisMonthCVR != null ? [{ type: "line", label: "今月購入率",
+        data: thisMonthLine, borderColor: "#10b981", backgroundColor: "transparent",
+        borderWidth: 1.5, borderDash: [4, 2], pointRadius: 0,
+        spanGaps: false, yAxisID: "y", tension: 0 }] : []),
+      { type: "bar",  label: "有料記事PV", data: paidPVData,
+        backgroundColor: "rgba(16,185,129,.35)", borderRadius: 4, yAxisID: "y2" },
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { labels: { boxWidth: 12, padding: 12 }},
+        tooltip: { callbacks: { label(ctx) {
+          const v = ctx.parsed.y;
+          const lbl = ctx.dataset.label ?? "";
+          if (lbl === "年次購入率") return `年次CVR: ${v != null ? v.toFixed(3) + "%" : "—"}`;
+          if (lbl === "今月購入率")   return `今月CVR: ${v != null ? v.toFixed(3) + "%" : "—"}`;
+          if (lbl.includes("移動平均"))    return `4週MA: ${v != null ? v.toFixed(3) + "%" : "—"}`;
+          if (ctx.dataset.yAxisID === "y") return `購入率: ${v != null ? v.toFixed(3) + "%" : "—"}`;
+          return `有料PV: ${(v ?? 0).toLocaleString()}`;
+        }}}},
+      scales: {
+        x:  { ticks: { color: "#9ca3af" }, grid: { display: false }},
+        y:  { ticks: { color: "#6366f1", callback: v => v != null ? v.toFixed(2) + "%" : "" },
+              grid: { color: "#f3f4f6" }, position: "left", min: 0,
+              title: { display: true, text: "購入率", color: "#6366f1", font: { size: 9 }}},
+        y2: { ticks: { color: "#10b981" }, grid: { display: false }, position: "right",
+              title: { display: true, text: "有料PV", color: "#10b981", font: { size: 9 }}},
+      },
+    },
+  });
+}
+
+// ─── 月次購入率トレンドチャート ──────────────────────────────
+function renderMonthlyCVRChart() {
+  if (!isPaid) { showProLock("monthlyCVRChart"); return; }
+  const history = currentData?.monthlyPVHistory ?? [];
+  const notice  = document.getElementById("monthlyCVRNotice");
+
+  if (history.length < 2) {
+    if (notice) notice.style.display = "block";
+    return;
+  }
+  if (notice) notice.style.display = "none";
+
+  // 月ごとの購入件数を集計
+  const purchases = currentData?.sales?.purchases ?? [];
+  const purchaseByMonth = {};
+  for (const p of purchases) {
+    if (p.is_refund) continue;
+    const d = new Date(p.purchased_at ?? p.created_at ?? "");
+    if (isNaN(d)) continue;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    purchaseByMonth[key] = (purchaseByMonth[key] ?? 0) + 1;
+  }
+
+  const labels   = history.map(h => h.monthKey);
+  const cvrData  = history.map(h => {
+    if (!h.paidViews || h.paidViews <= 0) return null;
+    const cnt = purchaseByMonth[h.monthKey] ?? 0;
+    return parseFloat((cnt / h.paidViews * 100).toFixed(3));
+  });
+  const paidPVData = history.map(h => h.paidViews ?? 0);
+  const totalPVData = history.map(h => h.totalPV ?? 0);
+
+  // 年次購入率（年ごとに購入数÷その年の有料PV合計）
+  const purchasesByYearM = {};
+  for (const p of purchases) {
+    if (p.is_refund) continue;
+    const d = new Date(p.purchased_at ?? p.created_at ?? "");
+    if (!isNaN(d)) { const yr = d.getFullYear(); purchasesByYearM[yr] = (purchasesByYearM[yr] ?? 0) + 1; }
+  }
+  const paidPVByYearM = {};
+  for (const h of history) {
+    const yr = parseInt(h.monthKey.split("-")[0]);
+    paidPVByYearM[yr] = (paidPVByYearM[yr] ?? 0) + (h.paidViews ?? 0);
+  }
+  const yearCVRM = {};
+  for (const yr of Object.keys(paidPVByYearM)) {
+    const pv = paidPVByYearM[yr], cnt = purchasesByYearM[yr] ?? 0;
+    if (pv > 0) yearCVRM[yr] = parseFloat((cnt / pv * 100).toFixed(3));
+  }
+
+  resetChart("monthlyCVRChart", {
+    data: { labels, datasets: [
+      { type: "line", label: "月次購入率(%)", data: cvrData,
+        borderColor: "#8b5cf6", backgroundColor: "rgba(139,92,246,.08)",
+        tension: .3, fill: true, pointRadius: 4, borderWidth: 2,
+        spanGaps: true, yAxisID: "y" },
+      { type: "line", label: "年次購入率",
+        data: labels.map(k => yearCVRM[parseInt(k.split("-")[0])] ?? null),
+        borderColor: "#94a3b8", backgroundColor: "transparent",
+        borderWidth: 1.5, borderDash: [3, 3], pointRadius: 0,
+        spanGaps: false, yAxisID: "y", tension: 0 },
+      { type: "bar", label: "有料記事PV(28日)", data: paidPVData,
+        backgroundColor: "rgba(16,185,129,.35)", borderRadius: 4, yAxisID: "y2" },
+      { type: "bar", label: "総PV(28日)", data: totalPVData,
+        backgroundColor: "rgba(99,102,241,.20)", borderRadius: 4, yAxisID: "y2" },
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { labels: { boxWidth: 12, padding: 12 }},
+        tooltip: { callbacks: { label(ctx) {
+          const v = ctx.parsed.y;
+          const lbl = ctx.dataset.label ?? "";
+          if (lbl === "年次購入率") return `年次CVR: ${v != null ? v.toFixed(3) + "%" : "—"}`;
+          if (ctx.dataset.yAxisID === "y") {
+            const v = ctx.parsed.y;
+            return `購入率: ${v != null ? v.toFixed(3) + "%" : "—"}`;
+          }
+          return `${ctx.dataset.label}: ${(ctx.parsed.y ?? 0).toLocaleString()}`;
+        }}}},
+      scales: {
+        x:  { ticks: { color: "#9ca3af" }, grid: { display: false }},
+        y:  { ticks: { color: "#8b5cf6", callback: v => v != null ? v.toFixed(2) + "%" : "" },
+              grid: { color: "#f3f4f6" }, position: "left", min: 0,
+              title: { display: true, text: "購入率", color: "#8b5cf6", font: { size: 9 }}},
+        y2: { ticks: { color: "#10b981" }, grid: { display: false }, position: "right",
+              title: { display: true, text: "PV(28日)", color: "#10b981", font: { size: 9 }}},
+      },
+    },
+  });
+}
+
 // ─── チャート ────────────────────────────────────────────────
 function resetChart(id, cfg) {
   if (charts[id]) charts[id].destroy();
@@ -564,7 +891,7 @@ function articleKey(publishAt, gran) {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   }
   if (gran === "week") {
-    return `${d.getFullYear()}-W${String(getISOWeek(d)).padStart(2,"0")}`;
+    return getISOWeekKey(d);
   }
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 }
@@ -601,7 +928,7 @@ function updateCharts() {
     const cur = new Date(since); cur.setHours(0,0,0,0);
     const end = new Date(today); end.setHours(0,0,0,0);
     while (cur <= end) {
-      const key = `${cur.getFullYear()}-W${String(getISOWeek(cur)).padStart(2,"0")}`;
+      const key = getISOWeekKey(cur);
       if (!map[key]) map[key] = { posts:0, likes:0, comments:0, views:0 };
       cur.setDate(cur.getDate() + 7);
     }
@@ -625,7 +952,7 @@ function updateCharts() {
 
   resetChart("trendChart", {
     data: { labels, datasets: [
-      { type:"line", label:"いいね数", data:likes,
+      { type:"line", label:"スキ数", data:likes,
         borderColor:"#6366f1", backgroundColor:"rgba(99,102,241,.08)",
         tension:.3, fill:true, pointRadius:2, borderWidth:2, yAxisID:"y" },
       { type:"bar",  label:"投稿数", data:posts,
@@ -638,7 +965,7 @@ function updateCharts() {
       scales:{
         x:{ ticks:{ color:"#9ca3af", maxTicksLimit:tickLimit }, grid:{ display:false }},
         y:{ ticks:{ color:"#6366f1" }, grid:{ color:"#f3f4f6" }, position:"left",
-            title:{ display:true, text:"いいね", color:"#6366f1", font:{size:9}}},
+            title:{ display:true, text:"スキ", color:"#6366f1", font:{size:9}}},
         y2:{ ticks:{ color:"#6366f1", stepSize:1, precision:0 }, grid:{ display:false }, position:"right",
              title:{ display:true, text:"投稿数", color:"#6366f1", font:{size:9}}},
       },
@@ -699,7 +1026,7 @@ function computePeriodDelta(gran) {
   function pad(n) { return String(n).padStart(2, "0"); }
   function getKey(d) {
     if (gran === "day")  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-    if (gran === "week") return `${d.getFullYear()}-W${pad(getISOWeek(d))}`;
+    if (gran === "week") return getISOWeekKey(d);
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
   }
 
@@ -759,7 +1086,7 @@ function updateKPIDeltas(gran) {
     const tc    = allArticles.reduce((s, a) => s + (a.commentCount ?? 0), 0);
     document.getElementById("kViewsSub").textContent    = "累計（全期間）";
     document.getElementById("kLikesSub").textContent    = `平均 ${total ? (tl/total).toFixed(1) : 0} / 記事`;
-    document.getElementById("kEngSub").textContent      = "(いいね+コメント)÷閲覧数";
+    document.getElementById("kEngSub").textContent      = "(スキ+コメント)÷閲覧数";
     document.getElementById("kCommentsSub").textContent = `平均 ${total ? (tc/total).toFixed(1) : 0} / 記事`;
     return;
   }
@@ -842,7 +1169,7 @@ async function render(data) {
   document.getElementById("kLikes").textContent     = fmt(totalLikes);
   document.getElementById("kLikesSub").textContent  = `平均 ${avgLikes} / 記事`;
   document.getElementById("kEng").textContent       = engRate;
-  document.getElementById("kEngSub").textContent    = "(いいね+コメント)÷閲覧数";
+  document.getElementById("kEngSub").textContent    = "(スキ+コメント)÷閲覧数";
   document.getElementById("kArticles").textContent  = total;
   document.getElementById("kArticlesSub").textContent = `有料 ${arts.filter(a=>a.isPaid).length} / 無料 ${arts.filter(a=>!a.isPaid).length}`;
   document.getElementById("kComments").textContent    = fmt(totalCmt);
@@ -876,7 +1203,7 @@ async function render(data) {
   resetChart("catLikeChart", {
     type:"bar",
     data:{ labels:catLabels, datasets:[{
-      label:"いいね数",
+      label:"スキ数",
       data: catLabels.map(k => catData[k].likes),
       backgroundColor: catCols, borderRadius:6,
     }]},
@@ -891,6 +1218,8 @@ async function render(data) {
 
   updateCharts();
   updateSalesCharts();
+  renderWeeklyCVRChart();
+  renderMonthlyCVRChart();
 
   // バブルチャート
   renderArticleBubble(allArticles, data.sales ?? null);
@@ -903,7 +1232,7 @@ async function render(data) {
   updateKPIDeltas(chartGran);
 
   document.getElementById("footerText").textContent =
-    `Maa Note Analysis — ${total}記事 · いいね ${totalLikes.toLocaleString()} · ${timeAgo(data.updatedAt)}`;
+    `Maa Note Analysis — ${total}記事 · スキ ${totalLikes.toLocaleString()} · ${timeAgo(data.updatedAt)}`;
 }
 
 // ─── TOP10 レンダリング ───────────────────────────────────────
@@ -1036,20 +1365,103 @@ function setPaidFilter(val, btn) {
 
 // ─── CSV エクスポート ─────────────────────────────────────────
 function exportCSV() {
-  if (!allArticles.length) return;
-  const header = ["#","タイトル","カテゴリ","投稿日時","種別","閲覧数","いいね","コメント","エンゲージメント率"];
-  const rows = allArticles.map((a, i) => {
-    const artEng = (a.readCount >= 0 && a.readCount > 0)
-      ? ((a.likeCount + a.commentCount) / a.readCount * 100).toFixed(2) + "%" : "";
-    return [i+1, `"${a.title.replace(/"/g,'""')}"`, a.category, a.dateStr,
-      a.isPaid ? "有料" : "無料", a.readCount >= 0 ? a.readCount : "",
-      a.likeCount ?? 0, a.commentCount ?? 0, artEng].join(",");
+  if (!isPaid) {
+    alert("🔒 CSV出力はPRO機能です。設定ページで合言葉を入力してください。");
+    return;
+  }
+  if (!currentData) return;
+
+  const now = new Date();
+  const ds  = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}`;
+  const esc = s => `"${String(s ?? "").replace(/"/g, '""')}"`;
+
+  function dlCSV(filename, rows) {
+    const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const purchases   = currentData.sales?.purchases  ?? [];
+  const weekHistory = currentData.weeklyPVHistory   ?? [];
+  const monthHistory= currentData.monthlyPVHistory  ?? [];
+
+  // detailMap（2026年累計）
+  const detailMap = {};
+  for (const d of (currentData.sales?.details ?? [])) { if (d.key) detailMap[d.key] = d; }
+
+  // 週別・月別購入数
+  const purchaseByWeek = {}, purchaseByMonth = {};
+  for (const p of purchases) {
+    if (p.is_refund) continue;
+    const d = new Date(p.purchased_at ?? p.created_at ?? "");
+    if (isNaN(d)) continue;
+    const wk = getISOWeekKey(d);
+    const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    purchaseByWeek[wk]  = (purchaseByWeek[wk]  ?? 0) + 1;
+    purchaseByMonth[mk] = (purchaseByMonth[mk] ?? 0) + 1;
+  }
+
+  // ① 全記事パフォーマンス（週次PVを列展開）
+  const weekKeys = weekHistory.map(h => h.weekKey);
+  const artCSV = [
+    ["タイトル","投稿日","種別","閲覧数(累計)","スキ","コメント","ENG率(%)",
+     "2026年購入数","2026年売上(¥)","CVR(%)","最新週PV",
+     ...weekKeys.map(k => `PV_${k}`)].join(","),
+    ...(currentData.articles ?? []).map(a => {
+      const det = detailMap[a.id];
+      const eng = a.readCount > 0
+        ? ((a.likeCount + a.commentCount) / a.readCount * 100).toFixed(2) : "";
+      const cvr = (a.readCount > 0 && det?.count)
+        ? (det.count / a.readCount * 100).toFixed(3) : "";
+      const latestPV = weekHistory[weekHistory.length - 1]?.artPVMap?.[a.id] ?? "";
+      return [esc(a.title), a.dateStr, a.isPaid ? "有料" : "無料",
+        a.readCount >= 0 ? a.readCount : "", a.likeCount ?? 0, a.commentCount ?? 0,
+        eng, det?.count ?? "", det?.sales ?? "", cvr, latestPV,
+        ...weekHistory.map(h => h.artPVMap?.[a.id] ?? 0)].join(",");
+    })
+  ];
+
+  // ② 週次CVRトレンド
+  const wCVR = weekHistory.map(h =>
+    h.paidViews > 0 ? parseFloat(((purchaseByWeek[h.weekKey] ?? 0) / h.paidViews * 100).toFixed(3)) : null
+  );
+  const wMA4 = wCVR.map((_, i) => {
+    const w = wCVR.slice(Math.max(0, i - 3), i + 1).filter(v => v != null);
+    return w.length >= 2 ? parseFloat((w.reduce((s,v)=>s+v,0)/w.length).toFixed(3)) : "";
   });
-  const blob = new Blob(["\uFEFF" + [header.join(","), ...rows].join("\n")], { type:"text/csv" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href = url; a.download = "note_articles.csv"; a.click();
-  URL.revokeObjectURL(url);
+  const weekCSV = [
+    ["週","有料PV","購入数","購入率(%)","4週MA(%)"].join(","),
+    ...weekHistory.map((h, i) =>
+      [h.weekKey, h.paidViews ?? 0, purchaseByWeek[h.weekKey] ?? 0,
+       wCVR[i] ?? "", wMA4[i]].join(","))
+  ];
+
+  // ③ 月次CVRトレンド
+  const monthCSV = [
+    ["月","有料PV(28日)","総PV(28日)","購入数","購入率(%)"].join(","),
+    ...monthHistory.map(h => {
+      const cnt = purchaseByMonth[h.monthKey] ?? 0;
+      const cvr = h.paidViews > 0 ? parseFloat((cnt / h.paidViews * 100).toFixed(3)) : "";
+      return [h.monthKey, h.paidViews ?? 0, h.totalPV ?? 0, cnt, cvr].join(",");
+    })
+  ];
+
+  // ④ 購入明細（2026年〜）
+  const purCSV = [
+    ["購入日時","記事キー","記事タイトル","価格(¥)","返金"].join(","),
+    ...purchases.map(p => {
+      const key   = p.content?.key ?? p.purchase_content_key ?? "";
+      const title = currentData.articles?.find(a => a.id === key)?.title ?? "";
+      return [p.purchased_at ?? "", key, esc(title), p.price ?? 0, p.is_refund ? "返金" : ""].join(",");
+    })
+  ];
+
+  dlCSV(`note_articles_${ds}.csv`,     artCSV);
+  setTimeout(() => dlCSV(`note_weekly_cvr_${ds}.csv`,  weekCSV),  300);
+  setTimeout(() => dlCSV(`note_monthly_cvr_${ds}.csv`, monthCSV), 600);
+  setTimeout(() => dlCSV(`note_purchases_${ds}.csv`,   purCSV),   900);
 }
 
 // ─── Gemini 出力レンダリング ──────────────────────────────────
@@ -1126,9 +1538,191 @@ function renderGeminiOutput(text) {
   return html;
 }
 
+// ─── Gemini 深掘り分析：プロンプト構築 ───────────────────────
+function buildGeminiDeepAnalysisPrompt(data) {
+  const arts     = data.articles ?? [];
+  const paid     = arts.filter(a => a.isPaid);
+  const purchases = data.sales?.purchases ?? [];
+  const monthHistory = data.monthlyPVHistory ?? [];
+  const weekHistory  = data.weeklyPVHistory  ?? [];
+
+  const detailMap = {};
+  for (const d of (data.sales?.details ?? [])) {
+    if (d.key) detailMap[d.key] = d;
+  }
+
+  // 購入件数を月別に集計
+  function buysByMonth(year, month) {
+    return purchases.filter(p => {
+      if (p.is_refund) return false;
+      const d = new Date(p.purchased_at ?? p.created_at ?? "");
+      return d.getFullYear() === year && d.getMonth() + 1 === month;
+    }).length;
+  }
+
+  // 購入件数を週別に集計
+  const purchaseByWeek = {};
+  for (const p of purchases) {
+    if (p.is_refund) continue;
+    const d = new Date(p.purchased_at ?? p.created_at ?? "");
+    if (isNaN(d)) continue;
+    const key = getISOWeekKey(d);
+    purchaseByWeek[key] = (purchaseByWeek[key] ?? 0) + 1;
+  }
+
+  // ① 月次CVRトレンド（直近6ヶ月）
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  const monthLines = monthHistory.slice(-6).map(h => {
+    const [y, m] = h.monthKey.split("-").map(Number);
+    const cnt    = buysByMonth(y, m);
+    const total  = h.totalPV  ?? 0;
+    const paid_  = h.paidViews ?? 0;
+    const rate   = total > 0 ? (paid_ / total * 100).toFixed(1) : "—";
+    const cvr    = paid_ > 0 ? (cnt / paid_ * 100).toFixed(3) : "0.000";
+    const flag   = h.monthKey === currentMonthKey ? "（月途中）" : "";
+    return `・${h.monthKey}: 総PV ${total.toLocaleString()}, 有料PV ${paid_.toLocaleString()}, 有料PV率 ${rate}%, 購入${cnt}件, CVR ${cvr}%${flag}`;
+  }).join("\n");
+
+  // ② 週次CVRトレンド（直近12週）
+  const weekLines = weekHistory.slice(-12).map(h => {
+    const cnt    = purchaseByWeek[h.weekKey] ?? 0;
+    const pv     = h.paidViews ?? 0;
+    const cvr    = pv > 0 ? (cnt / pv * 100).toFixed(3) : "—";
+    return `・${h.weekKey}: 有料PV ${pv}, 購入${cnt}件, CVR ${cvr}%`;
+  }).join("\n");
+
+  // ③ スキvs売上（有料記事）
+  const likesSalesLines = paid.map(a => {
+    const det  = detailMap[a.id] ?? {};
+    const s    = det.sales ?? -1;
+    const cnt  = det.count ?? 0;
+    return `・「${[...a.title].slice(0,24).join("")}」 スキ${a.likeCount ?? 0} 売上${s >= 0 ? fmtYen(s) : "—"} 購入${cnt}件`;
+  }).sort((a, b) => a.localeCompare(b, "ja")).join("\n");
+
+  // ④ 初速型/ロングテール分類（記事ごとの週次PV推移）
+  const classifyLines = paid.map(a => {
+    const pvSeq   = weekHistory.map(h => h.artPVMap?.[a.id] ?? 0);
+    const firstIdx = pvSeq.findIndex(v => v > 0);
+    if (firstIdx < 0) return `・「${[...a.title].slice(0,22).join("")}」 PVデータなし`;
+    const w = [0,1,2,3].map(i => pvSeq[firstIdx + i] ?? 0);
+    const laterSlice = pvSeq.slice(firstIdx + 4).filter(v => v > 0);
+    const laterAvg = laterSlice.length ? Math.round(laterSlice.reduce((s,v)=>s+v,0)/laterSlice.length) : 0;
+    const isLT = w[3] > 0 && w[0] > 0 && w[3] / w[0] >= 0.15;
+    const type = isLT ? "ロングテール" : "初速型";
+    const seq  = w.map((v,i) => `W+${i}:${v}`).join(" ");
+    return `・「${[...a.title].slice(0,22).join("")}」[${type}] ${seq} 後続平均${laterAvg}PV`;
+  }).join("\n");
+
+  return `あなたはnoteクリエイターのデータアナリストです。以下のデータを深掘りし、4つの分析を出力してください。
+マークダウン記号（#・*・**・---など）は一切使わないこと。前置き文も不要。数字を根拠に使うこと。
+
+【月次CVRトレンド（直近6ヶ月）】
+${monthLines || "データなし"}
+
+【週次CVRトレンド（直近12週）】
+${weekLines || "データなし"}
+
+【有料記事：スキ数 vs 売上】
+${likesSalesLines || "データなし"}
+
+【有料記事：週次PV推移と分類】
+${classifyLines || "データなし"}
+
+─────────────────────────────────────
+以下の4項目を分析し、必ず下記フォーマットで出力してください。
+
+①CVR改善の主因
+主因：〇〇
+補足：〇〇
+次の打ち手：〇〇
+
+②スキvs売上の相関
+結論：〇〇（相関あり・低い・なし）
+理由：〇〇
+示唆：〇〇
+
+③初速型・ロングテール型の分布
+分布：〇〇（初速型X本・ロングテールY本）
+ロングテール候補：〇〇
+戦略：〇〇
+
+④CVRスパイクの要因と再現戦略
+スパイク週：〇〇
+推定トリガー：〇〇
+再現条件：〇〇
+
+各項目3〜4行以内。抽象論不要。`;
+}
+
+// ─── Gemini 深掘り分析：出力レンダリング ─────────────────────
+function renderGeminiDeepOutput(text) {
+  const sections = text.split(/(?=①|②|③|④)/).filter(s => /^[①②③④]/.test(s.trim()));
+  if (!sections.length) return `<pre style="white-space:pre-wrap;font-size:0.82rem;color:#374151">${text}</pre>`;
+
+  const sectionColors = { "①": "#6366f1", "②": "#f59e0b", "③": "#10b981", "④": "#3b82f6" };
+
+  const cards = sections.map(s => {
+    const icon  = s.trim()[0];
+    const color = sectionColors[icon] ?? "#6366f1";
+    const lines = s.split("\n").map(l => l.trim()).filter(l => l);
+    const heading = lines[0] ?? "";
+    const body = lines.slice(1).map(l => {
+      const labelMatch = l.match(/^(主因|補足|次の打ち手|結論|理由|示唆|分布|ロングテール候補|戦略|スパイク週|推定トリガー|再現条件)[：:]/);
+      if (!labelMatch) return `<span style="color:#374151;font-size:0.8rem">${l}</span>`;
+      const label   = labelMatch[1];
+      const content = l.slice(labelMatch[0].length);
+      const isAction = ["次の打ち手","戦略","再現条件","示唆"].includes(label);
+      return `<div style="margin-bottom:5px">
+        <span style="color:${color};font-weight:700;font-size:0.75rem">${label}：</span>
+        <span style="color:${isAction ? "#111827" : "#6b7280"};font-weight:${isAction ? "600" : "400"};font-size:0.8rem">${content}</span>
+      </div>`;
+    }).join("");
+
+    return `<div style="padding:12px 14px;background:#f9fafb;border-radius:10px;border-left:3px solid ${color};margin-bottom:10px">
+      <div style="font-weight:700;color:#1f2937;margin-bottom:8px;font-size:0.88rem">${heading}</div>
+      <div style="line-height:1.7">${body}</div>
+    </div>`;
+  });
+
+  return cards.join("");
+}
+
+// ─── Gemini 深掘り分析：実行 ──────────────────────────────────
+async function runGeminiDeepAnalysis() {
+  if (!currentData) return;
+  if (!isPaid) {
+    const out = document.getElementById("aiDeepOutput");
+    out.innerHTML = `<span style="color:#854d0e">🔒 PRO機能です。<a href="#" onclick="chrome.runtime.openOptionsPage();return false;" style="color:#6366f1">設定画面</a>で合言葉を入力してください。</span>`;
+    return;
+  }
+  const btn = document.getElementById("aiDeepBtn");
+  const out = document.getElementById("aiDeepOutput");
+  btn.disabled = true;
+  btn.textContent = "分析中...";
+  out.innerHTML = `<span class="ai-loading">⏳ Geminiが深掘り分析中です...</span>`;
+
+  const prompt = buildGeminiDeepAnalysisPrompt(currentData);
+
+  chrome.runtime.sendMessage({ type: "GEMINI_ANALYZE", prompt }, res => {
+    btn.disabled = false;
+    btn.textContent = "深掘り分析する";
+    if (chrome.runtime.lastError || res?.error) {
+      out.innerHTML = `<span class="ai-error">⚠ ${res?.error ?? chrome.runtime.lastError?.message}</span>`;
+    } else {
+      out.innerHTML = renderGeminiDeepOutput(res.text ?? "（応答なし）");
+    }
+  });
+}
+
 // ─── Gemini 分析 ──────────────────────────────────────────────
 async function runGeminiAnalysis() {
   if (!currentData) return;
+  if (!isPaid) {
+    const out = document.getElementById("aiOutput");
+    out.innerHTML = `<span style="color:#854d0e">🔒 PRO機能です。<a href="#" onclick="chrome.runtime.openOptionsPage();return false;" style="color:#6366f1">設定画面</a>で合言葉を入力してください。</span>`;
+    return;
+  }
   const btn = document.getElementById("aiAnalyzeBtn");
   const out = document.getElementById("aiOutput");
   btn.disabled = true;
@@ -1150,6 +1744,7 @@ async function runGeminiAnalysis() {
 
 // ─── 記事パフォーマンスマップ（バブル） ──────────────────────
 function renderArticleBubble(arts, sales) {
+  if (!isPaid) { showProLock("articleBubble"); return; }
   const detailMap = {};
   for (const d of (sales?.details ?? [])) {
     if (d.key) detailMap[d.key] = d;
@@ -1274,7 +1869,7 @@ function renderArticleBubble(arts, sales) {
           grid: { color: "#f3f4f6" },
         },
         y: {
-          title: { display: true, text: "いいね数", color: "#6b7280", font: { size: 10 }},
+          title: { display: true, text: "スキ数", color: "#6b7280", font: { size: 10 }},
           ticks: { color: "#9ca3af" }, grid: { color: "#f3f4f6" },
         },
       },
@@ -1284,6 +1879,7 @@ function renderArticleBubble(arts, sales) {
 
 // ─── カテゴリ効率マップ（バブル） ────────────────────────────
 function renderCategoryBubble(arts) {
+  if (!isPaid) { showProLock("categoryBubble"); return; }
   const catMap = {};
   for (const a of arts) {
     const cat = a.category;
@@ -1385,6 +1981,19 @@ function switchTab(tabId) {
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
   document.getElementById(`tab-${tabId}`).classList.add("active");
   document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add("active");
+
+  // PROロック: content / articles タブはロック表示
+  if (!isPaid && (tabId === "content" || tabId === "articles")) {
+    const paneEl = document.getElementById(`tab-${tabId}`);
+    if (!paneEl.querySelector(".pro-tab-lock")) {
+      const div = document.createElement("div");
+      div.className = "pro-tab-lock";
+      div.style.cssText = "text-align:center;padding:60px 24px;color:#854d0e;background:#fef9c3;border-radius:12px;font-size:0.9rem;margin:20px 0;border:1px dashed #fde68a";
+      div.innerHTML = `🔒 <strong>PRO機能</strong><br><br>このタブは合言葉の入力が必要です。<br><a href="#" onclick="chrome.runtime.openOptionsPage();return false;" style="color:#6366f1;font-weight:600">設定画面を開く →</a>`;
+      paneEl.prepend(div);
+    }
+  }
+
   // Chart.js は非表示時に dimensions=0 になるので resize() でリセット
   requestAnimationFrame(() => Object.values(charts).forEach(c => c?.resize()));
 }
@@ -1438,6 +2047,10 @@ function requestRefresh(timeoutMs = 120000) {
 }
 
 (async () => {
+  // PRO解除キー確認（ハッシュ比較）
+  const pkR = await chrome.storage.local.get("paidKeyHash");
+  isPaid = (pkR.paidKeyHash === PAID_HASH);
+
   let data = await loadFromStorage();
   if (data) { showMain(); await render(data); return; }
 
@@ -1522,6 +2135,7 @@ document.querySelectorAll(".sgran-btn").forEach(btn => {
 });
 
 document.getElementById("aiAnalyzeBtn").addEventListener("click", runGeminiAnalysis);
+document.getElementById("aiDeepBtn").addEventListener("click", runGeminiDeepAnalysis);
 
 // タブ切り替え
 document.querySelectorAll(".tab-btn[data-tab]").forEach(btn => {
@@ -1560,7 +2174,7 @@ function renderArticleModal(articleId) {
   document.getElementById("modalMeta").innerHTML = [
     `📅 ${article.dateStr}`,
     `👁 閲覧数 ${fmt(article.readCount)}`,
-    `♥ いいね ${fmt(article.likeCount)}`,
+    `♥ スキ ${fmt(article.likeCount)}`,
     `💬 コメント ${article.commentCount}`,
     `📊 ENG率 ${artEng}`,
     article.isPaid ? `<span style="color:#059669;font-weight:700">💰 ${fmtYen(article.isPaid ? article.price || 0 : 0)} 記事</span>` : `<span style="color:#10b981">🆓 無料記事</span>`,
@@ -1606,6 +2220,51 @@ function renderArticleModal(articleId) {
   });
 
   document.getElementById("articleModal").classList.add("open");
+  renderModalWeeklyPVChart(articleId);
+}
+
+// ─── モーダル：記事別週次PVチャート ──────────────────────────
+function renderModalWeeklyPVChart(articleId) {
+  const wrap  = document.getElementById("modalWeeklyPVWrap");
+  const label = document.getElementById("modalWeeklyPVLabel");
+  if (!isPaid) {
+    if (wrap)  { wrap.style.display = "block"; showProLock("modalWeeklyPVChart"); }
+    if (label) label.style.display = "none";
+    return;
+  }
+  const history = currentData?.weeklyPVHistory ?? [];
+  const hasData = history.some(h => (h.artPVMap?.[articleId] ?? 0) > 0);
+
+  if (!hasData || !history.length) {
+    if (wrap)  wrap.style.display  = "none";
+    if (label) label.style.display = "none";
+    return;
+  }
+  if (wrap)  wrap.style.display  = "block";
+  if (label) label.style.display = "block";
+
+  const labels = history.map(h => h.weekKey);
+  const pvData = history.map(h => h.artPVMap?.[articleId] ?? 0);
+
+  if (charts["modalWeeklyPVChart"]) charts["modalWeeklyPVChart"].destroy();
+  charts["modalWeeklyPVChart"] = new Chart(
+    document.getElementById("modalWeeklyPVChart").getContext("2d"), {
+    data: { labels, datasets: [{
+      type: "bar", label: "週次閲覧数(PV)", data: pvData,
+      backgroundColor: pvData.map((v, i) =>
+        i === pvData.length - 1 ? "rgba(14,165,233,.85)" : "rgba(14,165,233,.40)"),
+      borderRadius: 4,
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `週次PV: ${ctx.parsed.y}` }}},
+      scales: {
+        x: { ticks: { color: "#9ca3af", font: { size: 10 }}, grid: { display: false }},
+        y: { ticks: { color: "#0ea5e9", precision: 0 }, grid: { color: "#f3f4f6" }, min: 0 },
+      },
+    },
+  });
 }
 
 // ─── 記事別購入推移集計（投稿日〜現在・粒度切替対応） ────────
@@ -1624,11 +2283,11 @@ function aggregateArticlePurchases(artPurchases, gran, publishAt) {
   } else if (gran === "week") {
     const cur = new Date(start);
     while (cur <= today) {
-      const k = `${cur.getFullYear()}-W${String(getISOWeek(cur)).padStart(2,"0")}`;
+      const k = getISOWeekKey(cur);
       if (!map[k]) map[k] = { count: 0, amount: 0 };
       cur.setDate(cur.getDate() + 7);
     }
-    const todayKey = `${today.getFullYear()}-W${String(getISOWeek(today)).padStart(2,"0")}`;
+    const todayKey = getISOWeekKey(today);
     if (!map[todayKey]) map[todayKey] = { count: 0, amount: 0 };
   } else {
     const cur = new Date(start.getFullYear(), start.getMonth(), 1);
@@ -1647,7 +2306,7 @@ function aggregateArticlePurchases(artPurchases, gran, publishAt) {
     if (gran === "day") {
       k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
     } else if (gran === "week") {
-      k = `${d.getFullYear()}-W${String(getISOWeek(d)).padStart(2,"0")}`;
+      k = getISOWeekKey(d);
     } else {
       k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
     }
